@@ -149,9 +149,7 @@ cursor/
    SECRET_KEY=your_very_secret_and_secure_key_please_change_this
 
    # Application settings
-   FLASK_APP=app.py
-   FLASK_ENV=development
-   MAX_FILE_SIZE_MB=2
+   MAX_FILE_SIZE_MB=10
    ```
 
 6. **Start the backend server:**
