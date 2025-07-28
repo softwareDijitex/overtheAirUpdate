@@ -9,6 +9,8 @@ bcrypt = Bcrypt()
 mongo = PyMongo()
 
 def create_app(config_class=Config):
+
+    print("Creating app")
     app = Flask(__name__, 
                 static_folder='../frontend/build',
                 static_url_path='')
