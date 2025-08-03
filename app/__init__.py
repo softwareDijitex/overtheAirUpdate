@@ -9,8 +9,8 @@ bcrypt = Bcrypt()
 mongo = PyMongo()
 
 def create_app(config_class=Config):
-
-    print("Creating app")
+    """Create Flask app for compatibility with existing models"""
+    print("Creating Flask app for compatibility")
     app = Flask(__name__, 
                 static_folder='../frontend/build',
                 static_url_path='')
@@ -25,12 +25,20 @@ def create_app(config_class=Config):
     bcrypt.init_app(app)
     mongo.init_app(app)
 
-    from .routes.customer_routes import customer_bp
-    from .routes.file_routes import file_bp
-    from .routes.machine_routes import machine_bp
+    return app
 
-    app.register_blueprint(customer_bp, url_prefix='/api/customers')
-    app.register_blueprint(file_bp, url_prefix='/api/files')
-    app.register_blueprint(machine_bp, url_prefix='/api/machines')
-
-    return app 
+def init_fastapi_components():
+    """Initialize Flask components for FastAPI compatibility"""
+    print("Initializing FastAPI components")
+    
+    # Create a minimal Flask app to initialize components
+    temp_app = Flask(__name__)
+    temp_app.config.from_object(Config)
+    temp_app.config['MONGO_URI'] = Config.MONGO_URI
+    
+    # Initialize components
+    bcrypt.init_app(temp_app)
+    mongo.init_app(temp_app)
+    
+    print("FastAPI components initialized successfully")
+    return bcrypt, mongo 

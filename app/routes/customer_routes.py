@@ -2,26 +2,54 @@ from flask import  request, jsonify
 from app.models.customer import Customer
 from app.utils.auth import generate_token, token_required, admin_required
 from app import mongo
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, HTTPException
+from pydantic import BaseModel
 
 customer_bp = APIRouter()
 
-@customer_bp.route('/register', methods=['POST'])
-def register():
+# Pydantic models for request/response
+class CustomerRegister(BaseModel):
+    name: str
+    email: str
+    phone: str
+    address: str
+    password: str
+
+class CustomerLogin(BaseModel):
+    email: str
+    password: str
+
+class AdminLogin(BaseModel):
+    email: str
+    password: str
+
+class CustomerResponse(BaseModel):
+    customer_id: str
+    name: str
+    email: str
+    phone: str
+    address: str
+    created_at: str
+    updated_at: str
+
+class LoginResponse(BaseModel):
+    message: str
+    customer_id: str
+    token: str
+
+class RegisterResponse(BaseModel):
+    message: str
+    customer_id: str
+    token: str
+
+@customer_bp.post('/register', response_model=RegisterResponse)
+async def register(customer_data: CustomerRegister):
     """Register a new customer"""
     try:
-        data = request.get_json()
-        
-        # Validate required fields
-        required_fields = ['name', 'email', 'phone', 'address', 'password']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'error': f'{field} is required'}), 400
-        
         # Check if email already exists
-        existing_customer = Customer.find_by_email(data['email'])
+        existing_customer = Customer.find_by_email(customer_data.email)
         if existing_customer:
-            return jsonify({'error': 'Email already registered'}), 400
+            raise HTTPException(status_code=400, detail='Email already registered')
         
         # Always generate a new UUID for customer_id
         import uuid
@@ -29,12 +57,12 @@ def register():
         
         # Create new customer with hashed password
         from app import bcrypt
-        hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+        hashed_password = bcrypt.generate_password_hash(customer_data.password).decode('utf-8')
         customer = Customer(
-            name=data['name'],
-            email=data['email'],
-            phone=data['phone'],
-            address=data['address'],
+            name=customer_data.name,
+            email=customer_data.email,
+            phone=customer_data.phone,
+            address=customer_data.address,
             password=hashed_password,
             customer_id=customer_id
         )
@@ -43,109 +71,171 @@ def register():
         # Generate token
         token = generate_token(customer.customer_id, customer.email)
         
-        return jsonify({
-            'message': 'Customer registered successfully',
-            'customer_id': customer.customer_id,
-            'token': token
-        }), 201
+        return RegisterResponse(
+            message='Customer registered successfully',
+            customer_id=customer.customer_id,
+            token=token
+        )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-# @customer_bp.route('/login', methods=['POST'])
-@customer_bp.post('/api/customers/login')
-async def login():
+@customer_bp.post('/login', response_model=LoginResponse)
+async def login(customer_data: CustomerLogin):
     """Customer login"""
     try:
-        data = request.get_json()
-        
-        if not data.get('email') or not data.get('password'):
-            return jsonify({'error': 'Email and password are required'}), 400
+        print(f"Login attempt for email: {customer_data.email}")
         
         # Find customer by email
-        customer = Customer.find_by_email(data['email'])
+        customer = Customer.find_by_email(customer_data.email)
         if not customer:
-            return jsonify({'error': 'Invalid email or password'}), 401
+            print(f"Customer not found for email: {customer_data.email}")
+            raise HTTPException(status_code=401, detail='Invalid email or password')
         
         # Check password
-        if not customer.check_password(data['password']):
-            return jsonify({'error': 'Invalid email or password'}), 401
+        if not customer.check_password(customer_data.password):
+            print(f"Invalid password for email: {customer_data.email}")
+            raise HTTPException(status_code=401, detail='Invalid email or password')
         
         # Generate token
         token = generate_token(customer.customer_id, customer.email)
+        print(f"Login successful for customer: {customer.customer_id}")
         
-        return jsonify({
-            'message': 'Login successful',
-            'customer_id': customer.customer_id,
-            'token': token
-        }), 200
+        return LoginResponse(
+            message='Login successful',
+            customer_id=customer.customer_id,
+            token=token
+        )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@customer_bp.route('/admin/login', methods=['POST'])
-def admin_login():
+@customer_bp.post('/admin/login', response_model=LoginResponse)
+async def admin_login(admin_data: AdminLogin):
     """Admin login"""
     try:
-        data = request.get_json()
-        
-        if not data.get('email') or not data.get('password'):
-            return jsonify({'error': 'Email and password are required'}), 400
-        
         # For demo purposes, using a simple admin check
         # In production, you should have a separate admin collection
-        if data['email'] == 'admin@example.com' and data['password'] == 'admin123':
-            token = generate_token('admin', data['email'], is_admin=True)
-            return jsonify({
-                'message': 'Admin login successful',
-                'token': token
-            }), 200
+        if admin_data.email == 'admin@example.com' and admin_data.password == 'admin123':
+            token = generate_token('admin', admin_data.email, is_admin=True)
+            return LoginResponse(
+                message='Admin login successful',
+                customer_id='admin',
+                token=token
+            )
         else:
-            return jsonify({'error': 'Invalid admin credentials'}), 401
+            raise HTTPException(status_code=401, detail='Invalid admin credentials')
             
+    except HTTPException:
+        raise
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@customer_bp.route('/<customer_id>', methods=['GET'])
-@token_required
-def get_customer(customer_id):
+@customer_bp.get('/{customer_id}', response_model=CustomerResponse)
+async def get_customer(customer_id: str, request: Request):
     """Get customer details by customer_id"""
     try:
+        # Get token from request headers
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            raise HTTPException(status_code=401, detail='Token is missing')
+        
+        token = auth_header.split(" ")[1]
+        from app.utils.auth import verify_token
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail='Token is invalid or expired')
+        
         # Check if user is admin or the customer themselves
-        if not request.is_admin and request.customer_id != customer_id:
-            return jsonify({'error': 'Unauthorized access'}), 403
+        if not payload.get('is_admin', False) and payload['customer_id'] != customer_id:
+            raise HTTPException(status_code=403, detail='Unauthorized access')
         
         customer = Customer.find_by_customer_id(customer_id)
         if not customer:
-            return jsonify({'error': 'Customer not found'}), 404
+            raise HTTPException(status_code=404, detail='Customer not found')
         
-        return jsonify(customer.to_dict()), 200
+        return CustomerResponse(**customer.to_dict())
         
+    except HTTPException:
+        raise
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@customer_bp.route('/', methods=['GET'])
-@token_required
-@admin_required
-def get_all_customers():
+@customer_bp.get('/', response_model=list[CustomerResponse])
+async def get_all_customers(request: Request):
     """Get all customers (admin only)"""
     try:
-        customers = Customer.get_all_customers()
-        return jsonify([customer.to_dict() for customer in customers]), 200
+        # Get token from request headers
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            raise HTTPException(status_code=401, detail='Token is missing')
         
+        token = auth_header.split(" ")[1]
+        from app.utils.auth import verify_token
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail='Token is invalid or expired')
+        
+        # Check if user is an admin
+        if not payload.get('is_admin', False):
+            raise HTTPException(status_code=403, detail='Admin privileges required')
+        
+        customers = Customer.get_all_customers()
+        return [CustomerResponse(**customer.to_dict()) for customer in customers]
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@customer_bp.route('/profile', methods=['GET'])
-@token_required
-def get_profile():
+@customer_bp.get('/profile', response_model=CustomerResponse)
+async def get_profile(request: Request):
     """Get current customer profile"""
     try:
-        customer = Customer.find_by_customer_id(request.customer_id)
-        if not customer:
-            return jsonify({'error': 'Customer not found'}), 404
+        # Get token from request headers
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            raise HTTPException(status_code=401, detail='Token is missing')
         
-        return jsonify(customer.to_dict()), 200
+        token = auth_header.split(" ")[1]
+        from app.utils.auth import verify_token
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail='Token is invalid or expired')
+        
+        customer = Customer.find_by_customer_id(payload['customer_id'])
+        if not customer:
+            raise HTTPException(status_code=404, detail='Customer not found')
+        
+        return CustomerResponse(**customer.to_dict())
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@customer_bp.get('/test-db')
+async def test_database():
+    """Test database connection - no auth required"""
+    try:
+        # Test if MongoDB is connected
+        if mongo.db is None:
+            raise HTTPException(status_code=500, detail='MongoDB connection not available')
+        
+        # Test a simple query
+        customer_count = mongo.db.customers.count_documents({})
+        
+        return {
+            "message": "Database connection successful",
+            "customer_count": customer_count,
+            "database_name": mongo.db.name
+        }
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500 
+        print(f"Database test error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f'Database error: {str(e)}') 

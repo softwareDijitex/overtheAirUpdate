@@ -6,8 +6,8 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'a_very_secret_and_secure_key_please_change_this'
-    MONGO_URI = os.environ.get('MONGO_URI')
-    DB_NAME = os.environ.get('DB_NAME')
+    MONGO_URI = os.environ.get('MONGO_URI') or 'mongodb://localhost:27017/customer_management'
+    DB_NAME = os.environ.get('DB_NAME') or 'customer_management'
     AZURE_STORAGE_CONNECTION_STRING = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
     AZURE_STORAGE_CONTAINER_NAME = os.environ.get('AZURE_STORAGE_CONTAINER_NAME')
     MAX_FILE_SIZE = (int(os.environ.get('MAX_FILE_SIZE_MB', 2))) * 1024 * 1024

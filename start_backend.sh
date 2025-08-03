@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Starting On The Fly Update Backend..."
-echo "====================================="
+echo "Starting Customer Management System Backend..."
+echo "=============================================="
 source venv/bin/activate
-python3 main.py
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload

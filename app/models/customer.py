@@ -42,7 +42,7 @@ class Customer:
     def save(self):
         """Save customer to database"""
         try:
-            if not mongo.db:
+            if mongo.db is None:
                 raise Exception("MongoDB connection not available")
                 
             customer_data = self.to_dict()
@@ -59,7 +59,7 @@ class Customer:
     def find_by_customer_id(customer_id):
         """Find customer by customer_id"""
         try:
-            if not mongo.db:
+            if mongo.db is None:
                 raise Exception("MongoDB connection not available")
                 
             customer_data = mongo.db.customers.find_one({'customer_id': customer_id})
@@ -80,7 +80,7 @@ class Customer:
     def find_by_email(email):
         """Find customer by email"""
         try:
-            if not mongo.db:
+            if mongo.db is None:
                 raise Exception("MongoDB connection not available")
                 
             customer_data = mongo.db.customers.find_one({'email': email})
@@ -102,7 +102,7 @@ class Customer:
     def get_all_customers():
         """Get all customers"""
         try:
-            if not mongo.db:
+            if mongo.db is None:
                 raise Exception("MongoDB connection not available")
                 
             customers = mongo.db.customers.find({}, {'password': 0})

@@ -81,7 +81,7 @@ export function AuthProvider({ children }) {
       console.error("Login error:", error);
       return {
         success: false,
-        error: error.response?.data?.message || "Login failed",
+        error: error.response?.data?.detail || error.response?.data?.message || "Login failed",
       };
     }
   };
@@ -118,7 +118,7 @@ export function AuthProvider({ children }) {
       console.error("Admin login error:", error);
       return {
         success: false,
-        error: error.response?.data?.message || "Admin login failed",
+        error: error.response?.data?.detail || error.response?.data?.message || "Admin login failed",
       };
     }
   };
@@ -152,7 +152,7 @@ export function AuthProvider({ children }) {
       console.error("Registration error:", error);
       return {
         success: false,
-        error: error.response?.data?.message || "Registration failed",
+        error: error.response?.data?.detail || error.response?.data?.message || "Registration failed",
       };
     }
   };
