@@ -42,10 +42,18 @@ class RegisterResponse(BaseModel):
     customer_id: str
     token: str
 
+"""
+The only changes made here was the validation code was removed
+Since that is not needed in FastAPI, probably does it internally
+"""
 @customer_bp.post('/register', response_model=RegisterResponse)
 async def register(customer_data: CustomerRegister):
     """Register a new customer"""
     try:
+        # Uses a pydantic model instead of raw JSON
+        # No manual validation needed for required fields in FastAPI
+
+
         # Check if email already exists
         existing_customer = Customer.find_by_email(customer_data.email)
         if existing_customer:
@@ -82,6 +90,14 @@ async def register(customer_data: CustomerRegister):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+"""
+1. Same for this one, automated validation using pydantic model
+The CustomerLogin model is used to validate the request body
+
+2. FastAPI automatically serializes Pydantic response models to JSON.
+This makes the response type-safe and self-documenting (via Swagger / OpenAPI).
+Clean separation of business logic and serialization.
+"""
 @customer_bp.post('/login', response_model=LoginResponse)
 async def login(customer_data: CustomerLogin):
     """Customer login"""
@@ -136,6 +152,11 @@ async def admin_login(admin_data: AdminLogin):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+"""
+Token verification happens behind the scenes via decorator in Flask using @token_required
+In FastAPI, it is done inline, gives clear control over auth logic per route
+Maybe returns proper error messages, but not sure, since we control and define them.
+"""
 @customer_bp.get('/{customer_id}', response_model=CustomerResponse)
 async def get_customer(customer_id: str, request: Request):
     """Get customer details by customer_id"""
@@ -165,6 +186,13 @@ async def get_customer(customer_id: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+"""
+In this one, the token validation is done inline, rather than using a decorator
+which is done in flask using @@token_required, @admin_required etc
+This makes it easier to migrate one route at a time, especially if decorators 
+are tightly coupled to Flask.
+"""
 
 @customer_bp.get('/', response_model=list[CustomerResponse])
 async def get_all_customers(request: Request):
