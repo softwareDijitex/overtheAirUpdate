@@ -1,3 +1,4 @@
+import datetime
 from flask import  request, jsonify
 from app.models.customer import Customer
 from app.utils.auth import generate_token, token_required, admin_required
@@ -29,8 +30,8 @@ class CustomerResponse(BaseModel):
     email: str
     phone: str
     address: str
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 class LoginResponse(BaseModel):
     message: str

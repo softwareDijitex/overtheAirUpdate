@@ -28,15 +28,14 @@ class Customer:
         return check_password(password, self.password)
 
     def to_dict(self):
-        """Convert customer object to dictionary"""
         return {
-            'customer_id': self.customer_id,
-            'name': self.name,
-            'email': self.email,
-            'phone': self.phone,
-            'address': self.address,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at
+            "customer_id": self.customer_id,
+            "name": self.name,
+            "email": self.email,
+            "phone": self.phone,
+            "address": self.address,
+            "created_at": self.created_at if isinstance(self.created_at, datetime) else None,
+            "updated_at": self.updated_at if isinstance(self.updated_at, datetime) else None,
         }
 
     def save(self):
