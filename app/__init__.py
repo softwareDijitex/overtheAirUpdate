@@ -5,7 +5,12 @@ import bcrypt
 
 def get_mongo_client():
     """Get MongoDB client for FastAPI"""
-    client = MongoClient(Config.MONGO_URI)
+    client = MongoClient(
+        Config.MONGO_URI,
+        ssl=True,
+        tlsAllowInvalidCertificates=True,  # ❌ Insecure: for local testing only
+        serverSelectionTimeoutMS=20000
+    )
     return client
 
 def get_database():
@@ -28,7 +33,7 @@ def init_fastapi_components():
     # Test database connection
     try:
         db = get_database()
-        if db:
+        if db is not None:
             # Test the connection
             db.command('ping')
             print("FastAPI components initialized successfully")

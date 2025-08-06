@@ -1,27 +1,32 @@
-import datetime
-from flask import  request, jsonify
+from datetime import datetime
+from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, EmailStr
+from typing import List, Optional
+import uuid
+
+# Import your existing modules
 from app.models.customer import Customer
-from app.utils.auth import generate_token, token_required, admin_required
+from app.utils.auth import generate_token, verify_token
 from app import get_database, hash_password
-from fastapi import APIRouter, Request, HTTPException
-from pydantic import BaseModel
 
 customer_bp = APIRouter()
+security = HTTPBearer()
 
 # Pydantic models for request/response
 class CustomerRegister(BaseModel):
     name: str
-    email: str
+    email: EmailStr  # Now using EmailStr with proper validation
     phone: str
     address: str
     password: str
 
 class CustomerLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 class AdminLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 class CustomerResponse(BaseModel):
@@ -30,8 +35,8 @@ class CustomerResponse(BaseModel):
     email: str
     phone: str
     address: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 class LoginResponse(BaseModel):
     message: str
@@ -43,25 +48,34 @@ class RegisterResponse(BaseModel):
     customer_id: str
     token: str
 
-"""
-The only changes made here was the validation code was removed
-Since that is not needed in FastAPI, probably does it internally
-"""
+# Dependency for token verification
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify token and return user info"""
+    try:
+        payload = verify_token(credentials.credentials)
+        if not payload:
+            raise HTTPException(status_code=401, detail='Token is invalid or expired')
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=401, detail='Token is invalid or expired')
+
+# Dependency for admin verification
+async def get_admin_user(current_user: dict = Depends(get_current_user)):
+    """Verify admin privileges"""
+    if not current_user.get('is_admin', False):
+        raise HTTPException(status_code=403, detail='Admin privileges required')
+    return current_user
+
 @customer_bp.post('/register', response_model=RegisterResponse)
 async def register(customer_data: CustomerRegister):
     """Register a new customer"""
     try:
-        # Uses a pydantic model instead of raw JSON
-        # No manual validation needed for required fields in FastAPI
-
-
         # Check if email already exists
         existing_customer = Customer.find_by_email(customer_data.email)
         if existing_customer:
             raise HTTPException(status_code=400, detail='Email already registered')
         
-        # Always generate a new UUID for customer_id
-        import uuid
+        # Generate a new UUID for customer_id
         customer_id = str(uuid.uuid4())
         
         # Create new customer with hashed password
@@ -88,16 +102,9 @@ async def register(customer_data: CustomerRegister):
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Registration error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-"""
-1. Same for this one, automated validation using pydantic model
-The CustomerLogin model is used to validate the request body
-
-2. FastAPI automatically serializes Pydantic response models to JSON.
-This makes the response type-safe and self-documenting (via Swagger / OpenAPI).
-Clean separation of business logic and serialization.
-"""
 @customer_bp.post('/login', response_model=LoginResponse)
 async def login(customer_data: CustomerLogin):
     """Customer login"""
@@ -135,8 +142,7 @@ async def login(customer_data: CustomerLogin):
 async def admin_login(admin_data: AdminLogin):
     """Admin login"""
     try:
-        # For demo purposes, using a simple admin check
-        # In production, you should have a separate admin collection
+        # For demo purposes - in production, use a proper admin system
         if admin_data.email == 'admin@example.com' and admin_data.password == 'admin123':
             token = generate_token('admin', admin_data.email, is_admin=True)
             return LoginResponse(
@@ -152,28 +158,12 @@ async def admin_login(admin_data: AdminLogin):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-"""
-Token verification happens behind the scenes via decorator in Flask using @token_required
-In FastAPI, it is done inline, gives clear control over auth logic per route
-Maybe returns proper error messages, but not sure, since we control and define them.
-"""
 @customer_bp.get('/{customer_id}', response_model=CustomerResponse)
-async def get_customer(customer_id: str, request: Request):
+async def get_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
     """Get customer details by customer_id"""
     try:
-        # Get token from request headers
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            raise HTTPException(status_code=401, detail='Token is missing')
-        
-        token = auth_header.split(" ")[1]
-        from app.utils.auth import verify_token
-        payload = verify_token(token)
-        if not payload:
-            raise HTTPException(status_code=401, detail='Token is invalid or expired')
-        
         # Check if user is admin or the customer themselves
-        if not payload.get('is_admin', False) and payload['customer_id'] != customer_id:
+        if not current_user.get('is_admin', False) and current_user['customer_id'] != customer_id:
             raise HTTPException(status_code=403, detail='Unauthorized access')
         
         customer = Customer.find_by_customer_id(customer_id)
@@ -185,58 +175,27 @@ async def get_customer(customer_id: str, request: Request):
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Get customer error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-"""
-In this one, the token validation is done inline, rather than using a decorator
-which is done in flask using @@token_required, @admin_required etc
-This makes it easier to migrate one route at a time, especially if decorators 
-are tightly coupled to Flask.
-"""
-
-@customer_bp.get('/', response_model=list[CustomerResponse])
-async def get_all_customers(request: Request):
+@customer_bp.get('/', response_model=List[CustomerResponse])
+async def get_all_customers(admin_user: dict = Depends(get_admin_user)):
     """Get all customers (admin only)"""
     try:
-        # Get token from request headers
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            raise HTTPException(status_code=401, detail='Token is missing')
-        
-        token = auth_header.split(" ")[1]
-        from app.utils.auth import verify_token
-        payload = verify_token(token)
-        if not payload:
-            raise HTTPException(status_code=401, detail='Token is invalid or expired')
-        
-        # Check if user is an admin
-        if not payload.get('is_admin', False):
-            raise HTTPException(status_code=403, detail='Admin privileges required')
-        
         customers = Customer.get_all_customers()
         return [CustomerResponse(**customer.to_dict()) for customer in customers]
         
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Get all customers error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @customer_bp.get('/profile', response_model=CustomerResponse)
-async def get_profile(request: Request):
+async def get_profile(current_user: dict = Depends(get_current_user)):
     """Get current customer profile"""
     try:
-        # Get token from request headers
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            raise HTTPException(status_code=401, detail='Token is missing')
-        
-        token = auth_header.split(" ")[1]
-        from app.utils.auth import verify_token
-        payload = verify_token(token)
-        if not payload:
-            raise HTTPException(status_code=401, detail='Token is invalid or expired')
-        
-        customer = Customer.find_by_customer_id(payload['customer_id'])
+        customer = Customer.find_by_customer_id(current_user['customer_id'])
         if not customer:
             raise HTTPException(status_code=404, detail='Customer not found')
         
@@ -245,6 +204,7 @@ async def get_profile(request: Request):
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Get profile error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @customer_bp.get('/test-db')
@@ -256,7 +216,7 @@ async def test_database():
         if db is None:
             raise HTTPException(status_code=500, detail='MongoDB connection not available')
         
-        # Test a simple query
+        # Test a simple query with timeout
         customer_count = db.customers.count_documents({})
         
         return {
@@ -267,4 +227,4 @@ async def test_database():
         
     except Exception as e:
         print(f"Database test error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f'Database error: {str(e)}') 
+        raise HTTPException(status_code=500, detail=f'Database error: {str(e)}')
