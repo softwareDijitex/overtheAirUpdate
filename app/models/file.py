@@ -1,6 +1,6 @@
 from datetime import datetime
 from bson.objectid import ObjectId
-from app import mongo
+from app import get_database
 import os
 from azure.storage.blob import BlobServiceClient
 from app.config import Config
@@ -19,10 +19,11 @@ class File:
     def get_next_version(self, customer_id, machine_id):
         """Get the next version number for a machine's file"""
         try:
-            if not mongo.db:
+            db = get_database()
+            if not db:
                 return "1"
             # Get customer document and check existing files for this machine
-            customer = mongo.db.customers.find_one({'customer_id': customer_id})
+            customer = db.customers.find_one({'customer_id': customer_id})
             if customer and 'machines' in customer:
                 machine = next(
                     (m for m in customer['machines'] if m['id'] == machine_id), 
@@ -63,11 +64,12 @@ class File:
     def save(self):
         """Save file to Azure Blob Storage and metadata to machine document"""
         try:
-            if not mongo.db:
+            db = get_database()
+            if not db:
                 raise Exception("MongoDB connection not available")
                 
             # Check if file with same name AND version already exists for this machine
-            customer = mongo.db.customers.find_one({'customer_id': self.customer_id})
+            customer = db.customers.find_one({'customer_id': self.customer_id})
             if customer and 'machines' in customer:
                 machine = next(
                     (m for m in customer['machines'] if m['id'] == self.machine_id), 
@@ -91,7 +93,7 @@ class File:
                 file_data['storage_type'] = 'mongodb'
                 
                 # Add file to machine's files array
-                result = mongo.db.customers.update_one(
+                result = db.customers.update_one(
                     {'customer_id': self.customer_id, 'machines.id': self.machine_id},
                     {'$push': {'machines.$.files': file_data}}
                 )
@@ -125,7 +127,7 @@ class File:
                     file_data['blob_name'] = blob_name
                     file_data['storage_type'] = 'azure'
                     
-                    result = mongo.db.customers.update_one(
+                    result = db.customers.update_one(
                         {'customer_id': self.customer_id, 'machines.id': self.machine_id},
                         {'$push': {'machines.$.files': file_data}}
                     )
@@ -142,7 +144,7 @@ class File:
                     file_data['content'] = self.file_data
                     file_data['storage_type'] = 'mongodb'
                     
-                    result = mongo.db.customers.update_one(
+                    result = db.customers.update_one(
                         {'customer_id': self.customer_id, 'machines.id': self.machine_id},
                         {'$push': {'machines.$.files': file_data}}
                     )
@@ -159,11 +161,12 @@ class File:
     def get_file(customer_id, machine_id, filename, version):
         """Get file from Azure Blob Storage or machine document"""
         try:
-            if not mongo.db:
+            db = get_database()
+            if not db:
                 raise Exception("MongoDB connection not available")
                 
             # Get customer document
-            customer = mongo.db.customers.find_one({'customer_id': customer_id})
+            customer = db.customers.find_one({'customer_id': customer_id})
             if not customer or 'machines' not in customer:
                 return None
             
@@ -231,10 +234,11 @@ class File:
     def get_all_versions(customer_id, machine_id, filename):
         """Get all versions of a file for a specific machine"""
         try:
-            if not mongo.db:
+            db = get_database()
+            if not db:
                 raise Exception("MongoDB connection not available")
                 
-            customer = mongo.db.customers.find_one({'customer_id': customer_id})
+            customer = db.customers.find_one({'customer_id': customer_id})
             if not customer or 'machines' not in customer:
                 return []
             
@@ -272,10 +276,11 @@ class File:
     def get_machine_files(customer_id, machine_id):
         """Get all files for a specific machine"""
         try:
-            if not mongo.db:
+            db = get_database()
+            if not db:
                 raise Exception("MongoDB connection not available")
                 
-            customer = mongo.db.customers.find_one({'customer_id': customer_id})
+            customer = db.customers.find_one({'customer_id': customer_id})
             if not customer or 'machines' not in customer:
                 return []
             
@@ -323,10 +328,11 @@ class File:
     def get_customer_files(customer_id):
         """Get all files for a customer across all machines"""
         try:
-            if not mongo.db:
+            db = get_database()
+            if not db:
                 raise Exception("MongoDB connection not available")
                 
-            customer = mongo.db.customers.find_one({'customer_id': customer_id})
+            customer = db.customers.find_one({'customer_id': customer_id})
             if not customer or 'machines' not in customer:
                 return []
             
@@ -352,11 +358,12 @@ class File:
     def delete_file(customer_id, machine_id, filename, version):
         """Delete a file from a machine"""
         try:
-            if not mongo.db:
+            db = get_database()
+            if not db:
                 raise Exception("MongoDB connection not available")
                 
             # Get the file data first to check storage type
-            customer = mongo.db.customers.find_one({'customer_id': customer_id})
+            customer = db.customers.find_one({'customer_id': customer_id})
             if not customer or 'machines' not in customer:
                 raise Exception("Customer or machine not found")
             
@@ -392,7 +399,7 @@ class File:
                     print(f"Warning: Failed to delete from Azure Blob Storage: {azure_error}")
             
             # Remove file from machine's files array
-            result = mongo.db.customers.update_one(
+            result = db.customers.update_one(
                 {'customer_id': customer_id, 'machines.id': machine_id},
                 {'$pull': {'machines.$.files': {'filename': filename, 'version': version}}}
             )

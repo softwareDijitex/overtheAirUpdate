@@ -1,13 +1,19 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Load .env from project root
-load_dotenv()
+# Load config.env from project root if present; otherwise load default .env
+project_root = Path(__file__).resolve().parent.parent
+config_env_path = project_root / "config.env"
+if config_env_path.exists():
+    load_dotenv(dotenv_path=str(config_env_path))
+else:
+    load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'a_very_secret_and_secure_key_please_change_this'
-    MONGO_URI = os.environ.get('MONGO_URI') or 'mongodb://localhost:27017/customer_management'
-    DB_NAME = os.environ.get('DB_NAME') or 'customer_management'
+    MONGO_URI = os.environ.get('MONGO_URI') or 'mongodb://localhost:27017/overtheairupdate'
+    DB_NAME = os.environ.get('DB_NAME') or 'overtheairupdate'
     AZURE_STORAGE_CONNECTION_STRING = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
     AZURE_STORAGE_CONTAINER_NAME = os.environ.get('AZURE_STORAGE_CONTAINER_NAME')
     MAX_FILE_SIZE = (int(os.environ.get('MAX_FILE_SIZE_MB', 2))) * 1024 * 1024

@@ -1,6 +1,6 @@
 from datetime import datetime
 from bson import ObjectId
-from app import mongo, bcrypt
+from app import get_database, hash_password, check_password
 
 class Customer:
     def __init__(self, name, email, phone, address, password=None, customer_id=None):
@@ -21,11 +21,11 @@ class Customer:
     def hash_password(self):
         """Hash the password using bcrypt"""
         if self.password:
-            self.password = bcrypt.generate_password_hash(self.password).decode('utf-8')
+            self.password = hash_password(self.password)
 
     def check_password(self, password):
         """Check if the provided password matches the hashed password"""
-        return bcrypt.check_password_hash(self.password, password)
+        return check_password(password, self.password)
 
     def to_dict(self):
         """Convert customer object to dictionary"""
@@ -42,14 +42,15 @@ class Customer:
     def save(self):
         """Save customer to database"""
         try:
-            if mongo.db is None:
+            db = get_database()
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
             customer_data = self.to_dict()
             if self.password:
                 customer_data['password'] = self.password
             
-            result = mongo.db.customers.insert_one(customer_data)
+            result = db.customers.insert_one(customer_data)
             return result.inserted_id
         except Exception as e:
             print(f"Error saving customer: {e}")
@@ -59,10 +60,11 @@ class Customer:
     def find_by_customer_id(customer_id):
         """Find customer by customer_id"""
         try:
-            if mongo.db is None:
+            db = get_database()
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
-            customer_data = mongo.db.customers.find_one({'customer_id': customer_id})
+            customer_data = db.customers.find_one({'customer_id': customer_id})
             if customer_data:
                 return Customer(
                     name=customer_data['name'],
@@ -80,10 +82,11 @@ class Customer:
     def find_by_email(email):
         """Find customer by email"""
         try:
-            if mongo.db is None:
+            db = get_database()
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
-            customer_data = mongo.db.customers.find_one({'email': email})
+            customer_data = db.customers.find_one({'email': email})
             if customer_data:
                 return Customer(
                     name=customer_data['name'],
@@ -102,10 +105,11 @@ class Customer:
     def get_all_customers():
         """Get all customers"""
         try:
-            if mongo.db is None:
+            db = get_database()
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
-            customers = mongo.db.customers.find({}, {'password': 0})
+            customers = db.customers.find({}, {'password': 0})
             return [Customer(
                 name=c['name'],
                 email=c['email'],

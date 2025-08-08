@@ -1,7 +1,7 @@
 from flask import  request, jsonify
 from app.models.customer import Customer
 from app.utils.auth import generate_token, token_required, admin_required
-from app import mongo
+from app import get_database, hash_password
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 
@@ -64,8 +64,7 @@ async def register(customer_data: CustomerRegister):
         customer_id = str(uuid.uuid4())
         
         # Create new customer with hashed password
-        from app import bcrypt
-        hashed_password = bcrypt.generate_password_hash(customer_data.password).decode('utf-8')
+        hashed_password = hash_password(customer_data.password)
         customer = Customer(
             name=customer_data.name,
             email=customer_data.email,
@@ -252,16 +251,17 @@ async def test_database():
     """Test database connection - no auth required"""
     try:
         # Test if MongoDB is connected
-        if mongo.db is None:
+        db = get_database()
+        if db is None:
             raise HTTPException(status_code=500, detail='MongoDB connection not available')
         
         # Test a simple query
-        customer_count = mongo.db.customers.count_documents({})
+        customer_count = db.customers.count_documents({})
         
         return {
             "message": "Database connection successful",
             "customer_count": customer_count,
-            "database_name": mongo.db.name
+            "database_name": db.name
         }
         
     except Exception as e:

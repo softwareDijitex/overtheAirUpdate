@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from app.models.machine import Machine
 from app.utils.auth import admin_required, customer_required, token_required
-from app import mongo
+from app import get_database
 from datetime import datetime
 import traceback
 from fastapi import APIRouter
@@ -146,7 +146,8 @@ def admin_create_machine():
             return jsonify({'error': 'Machine name is required'}), 400
         
         # Check if customer exists
-        customer = mongo.db.customers.find_one({'customer_id': customer_id})
+        db = get_database()
+        customer = db.customers.find_one({'customer_id': customer_id})
         if not customer:
             return jsonify({'error': 'Customer not found'}), 404
         
@@ -230,7 +231,8 @@ def admin_update_machine(machine_id):
             update_data['mac_address'] = data['mac_address']
         if 'customer_id' in data:
             # Verify customer exists
-            customer = mongo.db.customers.find_one({'customer_id': data['customer_id']})
+            db = get_database()
+            customer = db.customers.find_one({'customer_id': data['customer_id']})
             if not customer:
                 return jsonify({'error': 'Customer not found'}), 404
             update_data['customer_id'] = data['customer_id']

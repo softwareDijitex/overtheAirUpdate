@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from app import get_mongo_client, get_database, init_fastapi_components
 
 def frontend(build_dir="./build"):
     """
@@ -22,7 +23,7 @@ def frontend(build_dir="./build"):
 
     react = FastAPI(openapi_url="")
     react.mount('/static', StaticFiles(directory=build_dir / "static"))
-
+    
     @react.get('/{path:path}')
     async def handle_catch_all(request: Request, path):
 
@@ -69,8 +70,22 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Initialize Flask components for FastAPI compatibility
-from app import init_fastapi_components
+# Initialize DB handles on startup
+@app.on_event("startup")
+def _init_db_handles():
+    app.state.mongo_client = get_mongo_client()
+    app.state.db = get_database()
+
+# Simple DB health endpoint
+@app.get('/db/health')
+def db_health():
+    try:
+        app.state.mongo_client.admin.command('ping')
+        return {"ok": True}
+    except Exception:
+        return Response(status_code=500)
+
+# Initialize FastAPI components
 init_fastapi_components()
 
 # Import and include API routes
@@ -101,16 +116,4 @@ def test_cors():
 static_folder = os.path.join(os.path.dirname(__file__), 'frontendapp', 'build')
 static_dir = os.path.join(static_folder, 'static')
 
-app.mount("/", frontend(build_dir="./frontendapp/build"))
-
-# Only mount if static_dir exists
-# if os.path.isdir(static_dir):
-#     app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-# # Serve React index.html for all other routes (client-side routing)
-# @app.get("/{full_path:path}")
-# def serve_react_app(full_path: str):
-#     index_path = os.path.join(static_folder, 'index.html')
-#     if os.path.exists(index_path):
-#         return FileResponse(index_path)
-#     return Response(content="index.html not found", status_code=404) 
+app.mount("/", frontend(build_dir="./frontendapp/build")) 

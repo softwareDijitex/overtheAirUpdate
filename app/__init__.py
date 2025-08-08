@@ -1,44 +1,41 @@
-from flask import Flask
-from flask_bcrypt import Bcrypt
-from flask_pymongo import PyMongo
 from .config import Config
 import os
-from flask_cors import CORS
+from pymongo import MongoClient
+import bcrypt
 
-bcrypt = Bcrypt()
-mongo = PyMongo()
+def get_mongo_client():
+    """Get MongoDB client for FastAPI"""
+    client = MongoClient(Config.MONGO_URI)
+    return client
 
-def create_app(config_class=Config):
-    """Create Flask app for compatibility with existing models"""
-    print("Creating Flask app for compatibility")
-    app = Flask(__name__, 
-                static_folder='../frontend/build',
-                static_url_path='')
-    app.config.from_object(config_class)
-    
-    # Explicitly set MongoDB URI for Flask-PyMongo
-    app.config['MONGO_URI'] = config_class.MONGO_URI
+def get_database():
+    """Get MongoDB database for FastAPI"""
+    client = get_mongo_client()
+    return client[Config.DB_NAME] if Config.DB_NAME else None
 
-    # Enable CORS for all routes
-    CORS(app)
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-    bcrypt.init_app(app)
-    mongo.init_app(app)
-
-    return app
+def check_password(password: str, hashed: str) -> bool:
+    """Check password against hash using bcrypt"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 def init_fastapi_components():
-    """Initialize Flask components for FastAPI compatibility"""
+    """Initialize FastAPI components - now just returns the database"""
     print("Initializing FastAPI components")
     
-    # Create a minimal Flask app to initialize components
-    temp_app = Flask(__name__)
-    temp_app.config.from_object(Config)
-    temp_app.config['MONGO_URI'] = Config.MONGO_URI
-    
-    # Initialize components
-    bcrypt.init_app(temp_app)
-    mongo.init_app(temp_app)
-    
-    print("FastAPI components initialized successfully")
-    return bcrypt, mongo 
+    # Test database connection
+    try:
+        db = get_database()
+        if db:
+            # Test the connection
+            db.command('ping')
+            print("FastAPI components initialized successfully")
+            return db
+        else:
+            print("Warning: Database not configured")
+            return None
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        return None 

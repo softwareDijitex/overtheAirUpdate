@@ -2,7 +2,7 @@ from flask import  request, jsonify, send_file
 from app.models.file import File
 from app.models.machine import Machine
 from app.utils.auth import admin_required, customer_required
-from app import mongo
+from app import get_database
 from fastapi import APIRouter
 import io
 
@@ -223,7 +223,8 @@ def admin_upload_file():
             return jsonify({'error': 'Machine ID is required'}), 400
         
         # Check if customer exists
-        customer = mongo.db.customers.find_one({'customer_id': customer_id})
+        db = get_database()
+        customer = db.customers.find_one({'customer_id': customer_id})
         if not customer:
             return jsonify({'error': 'Customer not found'}), 404
         
