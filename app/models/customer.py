@@ -27,9 +27,10 @@ class Customer:
 
     def check_password(self, password):
         """Check if the provided password matches the hashed password"""
-        if not self.password:
-            return False
-        return bcrypt.check_password_hash(self.password, password)
+        # if not self.password:
+        #     return False
+        # return bcrypt.check_password_hash(self.password, password)
+        return check_password(password, self.password)
 
     def to_dict(self):
         return {

@@ -158,6 +158,29 @@ async def admin_login(admin_data: AdminLogin):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@customer_bp.get('/test-db')
+async def test_database():
+    """Test database connection - no auth required"""
+    try:
+        # Test if MongoDB is connected
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=500, detail='MongoDB connection not available')
+        
+        # Test a simple query with timeout
+        customer_count = db.customers.count_documents({})
+        
+        return {
+            "message": "Database connection successful",
+            "customer_count": customer_count,
+            "database_name": db.name
+        }
+        
+    except Exception as e:
+        print(f"Database test error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f'Database error: {str(e)}')
+        
 @customer_bp.get('/{customer_id}', response_model=CustomerResponse)
 async def get_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
     """Get customer details by customer_id"""
@@ -207,24 +230,3 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
         print(f"Get profile error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@customer_bp.get('/test-db')
-async def test_database():
-    """Test database connection - no auth required"""
-    try:
-        # Test if MongoDB is connected
-        db = get_database()
-        if db is None:
-            raise HTTPException(status_code=500, detail='MongoDB connection not available')
-        
-        # Test a simple query with timeout
-        customer_count = db.customers.count_documents({})
-        
-        return {
-            "message": "Database connection successful",
-            "customer_count": customer_count,
-            "database_name": db.name
-        }
-        
-    except Exception as e:
-        print(f"Database test error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f'Database error: {str(e)}')
