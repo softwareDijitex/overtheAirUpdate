@@ -52,6 +52,7 @@ class RegisterResponse(BaseModel):
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify token and return user info"""
     try:
+        print(f"Credentials: {credentials}")
         payload = verify_token(credentials.credentials)
         if not payload:
             raise HTTPException(status_code=401, detail='Token is invalid or expired')
@@ -180,7 +181,42 @@ async def test_database():
     except Exception as e:
         print(f"Database test error: {str(e)}")
         raise HTTPException(status_code=500, detail=f'Database error: {str(e)}')
+
+
+
+@customer_bp.get('/profile', response_model=CustomerResponse)
+async def get_profile(current_user: dict = Depends(get_current_user)):
+    """Get current customer profile"""
+    try:
+        print(f"Current user: {current_user}")
+        print(f"Customer ID: {current_user['customer_id']}")
+        customer = Customer.find_by_customer_id(current_user['customer_id'])
+        if not customer:
+            raise HTTPException(status_code=404, detail='Customer not found')
         
+        return CustomerResponse(**customer.to_dict())
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get profile error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@customer_bp.get('/', response_model=List[CustomerResponse])
+async def get_all_customers(admin_user: dict = Depends(get_admin_user)):
+    """Get all customers (admin only)"""
+    try:
+        customers = Customer.get_all_customers()
+        return [CustomerResponse(**customer.to_dict()) for customer in customers]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get all customers error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @customer_bp.get('/{customer_id}', response_model=CustomerResponse)
 async def get_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
     """Get customer details by customer_id"""
@@ -200,33 +236,3 @@ async def get_customer(customer_id: str, current_user: dict = Depends(get_curren
     except Exception as e:
         print(f"Get customer error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@customer_bp.get('/', response_model=List[CustomerResponse])
-async def get_all_customers(admin_user: dict = Depends(get_admin_user)):
-    """Get all customers (admin only)"""
-    try:
-        customers = Customer.get_all_customers()
-        return [CustomerResponse(**customer.to_dict()) for customer in customers]
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Get all customers error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@customer_bp.get('/profile', response_model=CustomerResponse)
-async def get_profile(current_user: dict = Depends(get_current_user)):
-    """Get current customer profile"""
-    try:
-        customer = Customer.find_by_customer_id(current_user['customer_id'])
-        if not customer:
-            raise HTTPException(status_code=404, detail='Customer not found')
-        
-        return CustomerResponse(**customer.to_dict())
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Get profile error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
