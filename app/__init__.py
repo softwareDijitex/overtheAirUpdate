@@ -1,34 +1,46 @@
-from flask import Flask
-from flask_bcrypt import Bcrypt
-from flask_pymongo import PyMongo
 from .config import Config
 import os
-from flask_cors import CORS
+from pymongo import MongoClient
+import bcrypt
 
-bcrypt = Bcrypt()
-mongo = PyMongo()
+def get_mongo_client():
+    """Get MongoDB client for FastAPI"""
+    client = MongoClient(
+        Config.MONGO_URI,
+        ssl=True,
+        tlsAllowInvalidCertificates=True,  # ❌ Insecure: for local testing only
+        serverSelectionTimeoutMS=20000
+    )
+    return client
 
-def create_app(config_class=Config):
-    app = Flask(__name__, 
-                static_folder='../frontend/build',
-                static_url_path='')
-    app.config.from_object(config_class)
+def get_database():
+    """Get MongoDB database for FastAPI"""
+    client = get_mongo_client()
+    return client[Config.DB_NAME] if Config.DB_NAME else None
+
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def check_password(password: str, hashed: str) -> bool:
+    """Check password against hash using bcrypt"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+def init_fastapi_components():
+    """Initialize FastAPI components - now just returns the database"""
+    print("Initializing FastAPI components")
     
-    # Explicitly set MongoDB URI for Flask-PyMongo
-    app.config['MONGO_URI'] = config_class.MONGO_URI
-
-    # Enable CORS for all routes
-    CORS(app)
-
-    bcrypt.init_app(app)
-    mongo.init_app(app)
-
-    from .routes.customer_routes import customer_bp
-    from .routes.file_routes import file_bp
-    from .routes.machine_routes import machine_bp
-
-    app.register_blueprint(customer_bp, url_prefix='/api/customers')
-    app.register_blueprint(file_bp, url_prefix='/api/files')
-    app.register_blueprint(machine_bp, url_prefix='/api/machines')
-
-    return app 
+    # Test database connection
+    try:
+        db = get_database()
+        if db is not None:
+            # Test the connection
+            db.command('ping')
+            print("FastAPI components initialized successfully")
+            return db
+        else:
+            print("Warning: Database not configured")
+            return None
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        return None 

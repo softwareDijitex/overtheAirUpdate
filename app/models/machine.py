@@ -3,7 +3,7 @@ from bson.objectid import ObjectId
 import uuid
 from datetime import datetime
 import re
-from app import mongo  # Use the shared mongo instance from app
+from app import get_database  # Use the shared database instance from app
 import traceback
 
 class Machine:
@@ -35,7 +35,8 @@ class Machine:
         """Save the machine as a subdocument in the customer's document"""
         try:
             print(f"Attempting to save machine as subdocument: {self.to_dict()}")
-            result = mongo.db.customers.update_one(
+            db = get_database()
+            result = db.customers.update_one(
                 {'customer_id': self.customer_id},
                 {'$push': {'machines': self.to_dict()}}
             )
@@ -64,7 +65,8 @@ class Machine:
     @staticmethod
     def get_customer_machines(customer_id):
         try:
-            customer = mongo.db.customers.find_one({'customer_id': customer_id})
+            db = get_database()
+            customer = db.customers.find_one({'customer_id': customer_id})
             if not customer or 'machines' not in customer:
                 return []
             return [Machine.from_dict(m) for m in customer['machines']]
@@ -75,7 +77,8 @@ class Machine:
     @staticmethod
     def find_by_machine_id(customer_id, machine_id):
         try:
-            customer = mongo.db.customers.find_one({'customer_id': customer_id})
+            db = get_database()
+            customer = db.customers.find_one({'customer_id': customer_id})
             if not customer or 'machines' not in customer:
                 return None
             for m in customer['machines']:
@@ -91,7 +94,8 @@ class Machine:
         try:
             updates['updated_at'] = datetime.utcnow()
             # Use positional operator to update the correct machine in the array
-            result = mongo.db.customers.update_one(
+            db = get_database()
+            result = db.customers.update_one(
                 {'customer_id': customer_id, 'machines.id': machine_id},
                 {'$set': {f'machines.$.{k}': v for k, v in updates.items()}}
             )
@@ -103,7 +107,8 @@ class Machine:
     @staticmethod
     def delete_machine_by_customer(customer_id, machine_id):
         try:
-            result = mongo.db.customers.update_one(
+            db = get_database()
+            result = db.customers.update_one(
                 {'customer_id': customer_id},
                 {'$pull': {'machines': {'id': machine_id}}}
             )
@@ -141,7 +146,8 @@ class Machine:
                 return False
             normalized_mac = Machine.normalize_mac_address(mac_address)
             # Check all customers for this MAC address
-            count = mongo.db.customers.count_documents({'machines.mac_address': normalized_mac})
+            db = get_database()
+            count = db.customers.count_documents({'machines.mac_address': normalized_mac})
             return count > 0
         except Exception as e:
             print(f"Error checking MAC address existence: {e}")

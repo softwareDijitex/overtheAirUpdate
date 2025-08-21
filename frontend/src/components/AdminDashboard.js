@@ -67,7 +67,11 @@ const AdminDashboard = () => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/customers/");
+      const response = await axios.get("http://localhost:8000/api/customers/", {
+        headers: {
+          Authorization: `Bearer ${token}` // Make sure you have the admin token here
+        }
+      });
       setCustomers(response.data);
     } catch (error) {
       setError("Failed to fetch customers");
