@@ -3,7 +3,12 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import pathlib
+import fastapi.exceptions
 from app import get_mongo_client, get_database, init_fastapi_components
+from azure.storage.blob import BlobServiceClient, ContentSettings
+from azure.core.exceptions import ResourceExistsError
+
 
 def frontend(build_dir="./build"):
     """
@@ -13,11 +18,6 @@ def frontend(build_dir="./build"):
             if not, change it some lines below
     :return: fastapi.FastAPI
     """
-
-    import pathlib
-    import fastapi.exceptions
-    from fastapi import FastAPI, Request, Response
-    from fastapi.staticfiles import StaticFiles
 
     build_dir = pathlib.Path(build_dir)
 
@@ -39,7 +39,7 @@ def frontend(build_dir="./build"):
 
     return react
 
-
+# Define CORS origins at module level
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -51,9 +51,10 @@ origins = [
     "http://127.0.0.1:8000",
     "http://0.0.0.0:3000",
     "http://0.0.0.0:8000",
-    "https://battery-monitor-webapp-endhfdbxavdqhtef.centralindia-01.azurewebsites.net/",
+    "https://battery-monitor-webapp-endhfdbxavdqhtef.centralindia-01.azurewebsites.net",
 ]
 
+# Create FastAPI app
 app = FastAPI(
     title="Customer Management System API",
     description="API for managing customers, machines, and files",
@@ -88,32 +89,47 @@ def db_health():
 # Initialize FastAPI components
 init_fastapi_components()
 
-# Import and include API routes
+# Import and include API routes FIRST
 from app.routes.customer_routes import customer_bp
 from app.routes.machine_routes import machine_bp
 from app.routes.file_routes import file_bp
+from app.routes.machineHardware_routes import hardware_bp
 
-# Include API routes
+# Include API routes BEFORE mounting frontend
 app.include_router(customer_bp, prefix="/api/customers", tags=["customers"])
 app.include_router(machine_bp, prefix="/api/machines", tags=["machines"])
 app.include_router(file_bp, prefix="/api/files", tags=["files"])
+app.include_router(hardware_bp, prefix="/api/hardware", tags=["hardware"])
 
-# Health check endpoint
+# Add specific API endpoints
 @app.get('/health')
 def health_check():
     return Response(status_code=204)
+
+
+@app.get('/api/test-cors')
+def test_cors():
+    return {"message": "CORS is working!", "timestamp": "2024-01-01T00:00:00Z"}
+
+# Add debug endpoint to see all routes
+@app.get("/debug/routes")
+def list_routes():
+    routes = []
+    for route in app.routes:
+        if hasattr(route, 'methods') and hasattr(route, 'path'):
+            routes.append({
+                "path": route.path,
+                "methods": list(route.methods),
+                "name": getattr(route, 'name', 'unknown')
+            })
+    return {"routes": routes}
 
 # CORS preflight handler
 @app.options("/{full_path:path}")
 async def options_handler():
     return Response(status_code=200)
 
-# Debug endpoint to test CORS
-@app.get('/api/test-cors')
-def test_cors():
-    return {"message": "CORS is working!", "timestamp": "2024-01-01T00:00:00Z"}
-
+# Mount the React frontend LAST (this catches all remaining routes)
 static_folder = os.path.join(os.path.dirname(__file__), 'frontendapp', 'build')
-static_dir = os.path.join(static_folder, 'static')
+app.mount("/", frontend(build_dir="./frontendapp/build"))
 
-app.mount("/", frontend(build_dir="./frontendapp/build")) 
