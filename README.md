@@ -153,8 +153,10 @@ cursor/
    ```
 
 6. **Start the backend server:**
+   source venv/bin/activate
+
    ```bash
-   python app.py
+    uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
 #### Frontend Setup
@@ -457,10 +459,8 @@ For issues and questions:
 Email: admin@example.com
 Password: admin123
 
-
-generate deployable flask 
+generate deployable flask
 zip -r flask-backend.zip app main.py requirements.txt frontendapp
-
 
 deployment
 az login

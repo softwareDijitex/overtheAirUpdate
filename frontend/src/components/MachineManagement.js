@@ -50,7 +50,7 @@ const MachineManagement = ({
         : `/api/machines/customer/${customerId}`;
 
       const response = await axios.get(endpoint);
-      setMachines(response.data.machines || []);
+      setMachines(response.data || []);
     } catch (err) {
       // Only show error for actual API failures (4xx/5xx status codes)
       if (err.response && err.response.status >= 400) {
@@ -94,9 +94,7 @@ const MachineManagement = ({
           ? `/api/machines/admin/`
           : `/api/machines/customer/${customerId}`;
 
-        const requestData = isAdmin
-          ? { ...formData, customer_id: customerId }
-          : formData;
+        const requestData = { ...formData, customer_id: customerId };
 
         await axios.post(endpoint, requestData);
         setSuccessMessage("Machine created successfully");

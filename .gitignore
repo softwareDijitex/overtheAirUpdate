@@ -6,6 +6,7 @@ config.env.example
 # Ignore Python virtual environment
 venv/ 
 /frontend/build/
+/frontend/node_modules/
 **/.cache/
 __pycache__/
 *.pyc

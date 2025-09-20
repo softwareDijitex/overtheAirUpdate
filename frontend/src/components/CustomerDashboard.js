@@ -68,7 +68,7 @@ const CustomerDashboard = () => {
       const response = await axios.get(
         `/api/machines/customer/${user.customer_id}`
       );
-      setMachines(response.data.machines || []);
+      setMachines(response.data || []);
     } catch (error) {
       // Only show error for actual API failures (4xx/5xx status codes)
       if (error.response && error.response.status >= 400) {

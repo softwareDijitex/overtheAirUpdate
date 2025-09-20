@@ -69,8 +69,8 @@ const AdminDashboard = () => {
       setLoading(true);
       const response = await axios.get("http://localhost:8000/api/customers/", {
         headers: {
-          Authorization: `Bearer ${token}` // Make sure you have the admin token here
-        }
+          Authorization: `Bearer ${token}`, // Make sure you have the admin token here
+        },
       });
       setCustomers(response.data);
     } catch (error) {
@@ -86,7 +86,7 @@ const AdminDashboard = () => {
       const response = await axios.get(
         `/api/machines/admin/customer/${customerId}`
       );
-      setMachines(response.data.machines || []);
+      setMachines(response.data || []);
     } catch (error) {
       setError("Failed to fetch customer machines");
       console.error("Error fetching machines:", error);
