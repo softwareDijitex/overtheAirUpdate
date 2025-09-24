@@ -138,6 +138,23 @@ class Machine:
             print(f"Error get_customer_machines: {e}")
             return []
 
+    # @staticmethod
+    # def find_by_machine_id_for_customer(customer_id: str, machine_id: str) -> Optional["Machine"]:
+    #     """Find a machine by id under a specific customer."""
+    #     try:
+    #         db = get_database()
+    #         doc = db.customers.find_one(
+    #             {"customer_id": customer_id, "machines.id": machine_id},
+    #             {"machines.$": 1},
+    #             max_time_ms=5000,
+    #         )
+    #         if not doc or "machines" not in doc or not doc["machines"]:
+    #             return None
+    #         return Machine.from_dict(doc["machines"][0])
+    #     except Exception as e:
+    #         print(f"Error find_by_machine_id_for_customer: {e}")
+    #         return None
+
     @staticmethod
     def find_by_machine_id_for_customer(customer_id: str, machine_id: str) -> Optional["Machine"]:
         """Find a machine by id under a specific customer."""
@@ -145,7 +162,7 @@ class Machine:
             db = get_database()
             doc = db.customers.find_one(
                 {"customer_id": customer_id, "machines.id": machine_id},
-                {"machines.$": 1},
+                {"machines": {"$elemMatch": {"id": machine_id}}},
                 max_time_ms=5000,
             )
             if not doc or "machines" not in doc or not doc["machines"]:
@@ -155,13 +172,31 @@ class Machine:
             print(f"Error find_by_machine_id_for_customer: {e}")
             return None
 
+
+    # @staticmethod
+    # def get_machine_by_id(machine_id: str) -> Optional["Machine"]:
+    #     """Admin: find any machine by global id across customers."""
+    #     try:
+    #         db = get_database()
+    #         doc = db.customers.find_one(
+    #             {"machines.id": machine_id}, {"machines.$": 1}, max_time_ms=5000
+    #         )
+    #         if not doc or "machines" not in doc or not doc["machines"]:
+    #             return None
+    #         return Machine.from_dict(doc["machines"][0])
+    #     except Exception as e:
+    #         print(f"Error get_machine_by_id: {e}")
+    #         return None
+
     @staticmethod
     def get_machine_by_id(machine_id: str) -> Optional["Machine"]:
         """Admin: find any machine by global id across customers."""
         try:
             db = get_database()
             doc = db.customers.find_one(
-                {"machines.id": machine_id}, {"machines.$": 1}, max_time_ms=5000
+                {"machines.id": machine_id},
+                {"machines": {"$elemMatch": {"id": machine_id}}},
+                max_time_ms=5000,
             )
             if not doc or "machines" not in doc or not doc["machines"]:
                 return None
@@ -169,6 +204,7 @@ class Machine:
         except Exception as e:
             print(f"Error get_machine_by_id: {e}")
             return None
+
 
     @staticmethod
     def update_machine_for_customer(customer_id: str, machine_id: str, updates: Dict[str, Any]) -> bool:
