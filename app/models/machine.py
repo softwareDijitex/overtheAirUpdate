@@ -165,7 +165,7 @@ class Machine:
                 {"machines": {"$elemMatch": {"id": machine_id}}},
                 max_time_ms=5000,
             )
-            if not doc or "machines" not in doc or not doc["machines"]:
+            if doc is None or "machines" not in doc or not doc["machines"]:
                 return None
             return Machine.from_dict(doc["machines"][0])
         except Exception as e:

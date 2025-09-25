@@ -20,7 +20,7 @@ class File:
         """Get the next version number for a machine's file"""
         try:
             db = get_database()
-            if not db:
+            if db is None:
                 return "1"
             # Get customer document and check existing files for this machine
             customer = db.customers.find_one({'customer_id': customer_id})
@@ -65,7 +65,7 @@ class File:
         """Save file to Azure Blob Storage and metadata to machine document"""
         try:
             db = get_database()
-            if not db:
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
             # Check if file with same name AND version already exists for this machine
@@ -162,7 +162,7 @@ class File:
         """Get file from Azure Blob Storage or machine document"""
         try:
             db = get_database()
-            if not db:
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
             # Get customer document
@@ -235,7 +235,7 @@ class File:
         """Get all versions of a file for a specific machine"""
         try:
             db = get_database()
-            if not db:
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
             customer = db.customers.find_one({'customer_id': customer_id})
@@ -277,7 +277,7 @@ class File:
         """Get all files for a specific machine"""
         try:
             db = get_database()
-            if not db:
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
             customer = db.customers.find_one({'customer_id': customer_id})
@@ -329,7 +329,7 @@ class File:
         """Get all files for a customer across all machines"""
         try:
             db = get_database()
-            if not db:
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
             customer = db.customers.find_one({'customer_id': customer_id})
@@ -359,7 +359,7 @@ class File:
         """Delete a file from a machine"""
         try:
             db = get_database()
-            if not db:
+            if db is None:
                 raise Exception("MongoDB connection not available")
                 
             # Get the file data first to check storage type
