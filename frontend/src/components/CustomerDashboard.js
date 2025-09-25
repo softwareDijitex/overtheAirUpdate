@@ -30,24 +30,24 @@ import MachineManagement from "./MachineManagement";
 const CustomerDashboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("machines");
-  const [machines, setMachines] = useState([]);
+  // const [machines, setMachines] = useState([]);
   const [selectedMachine, setSelectedMachine] = useState(null);
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [versionNumber, setVersionNumber] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [selectedFileVersions, setSelectedFileVersions] = useState([]);
   const [selectedFileName, setSelectedFileName] = useState("");
 
-  useEffect(() => {
-    if (user && user.customer_id) {
-      fetchMachines();
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (user && user.customer_id) {
+  //     fetchMachines();
+  //   }
+  // }, [user]);
 
   useEffect(() => {
     if (success) {
@@ -56,33 +56,33 @@ const CustomerDashboard = () => {
     }
   }, [success]);
 
-  const fetchMachines = async () => {
-    if (!user || !user.customer_id) {
-      console.log("User or customer_id not available yet");
-      return;
-    }
+  // const fetchMachines = async () => {
+  //   if (!user || !user.customer_id) {
+  //     console.log("User or customer_id not available yet");
+  //     return;
+  //   }
 
-    try {
-      setLoading(true);
-      setError(""); // Clear any previous errors
-      const response = await axios.get(
-        `/api/machines/customer/${user.customer_id}`
-      );
-      setMachines(response.data || []);
-    } catch (error) {
-      // Only show error for actual API failures (4xx/5xx status codes)
-      if (error.response && error.response.status >= 400) {
-        setError("Failed to fetch machines");
-        console.error("Error fetching machines:", error);
-      } else {
-        // For network errors or other issues, still show error
-        setError("Failed to fetch machines");
-        console.error("Error fetching machines:", error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  //   try {
+  //     setLoading(true);
+  //     setError(""); // Clear any previous errors
+  //     const response = await axios.get(
+  //       `/api/machines/customer/${user.customer_id}`
+  //     );
+  //     setMachines(response.data || []);
+  //   } catch (error) {
+  //     // Only show error for actual API failures (4xx/5xx status codes)
+  //     if (error.response && error.response.status >= 400) {
+  //       setError("Failed to fetch machines");
+  //       console.error("Error fetching machines:", error);
+  //     } else {
+  //       // For network errors or other issues, still show error
+  //       setError("Failed to fetch machines");
+  //       console.error("Error fetching machines:", error);
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const fetchMachineFiles = async (machineId) => {
     if (!user || !user.customer_id) {
@@ -282,15 +282,15 @@ const CustomerDashboard = () => {
     return new Date(dateString).toLocaleString();
   };
 
-  if (loading) {
-    return (
-      <Container className="text-center mt-4">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-      </Container>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <Container className="text-center mt-4">
+  //       <Spinner animation="border" role="status">
+  //         <span className="visually-hidden">Loading...</span>
+  //       </Spinner>
+  //     </Container>
+  //   );
+  // }
 
   if (!user || !user.customer_id) {
     return (
