@@ -31,6 +31,14 @@ async def upload_file(
         
         file_data = await file.read()
         
+        from app.config import Config
+        if len(file_data) > Config.MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Max {Config.MAX_UPLOAD_MB} MB"
+            )
+
+
         # Create and save file
         file_obj = FileModel(
             customer_id=customer_id,
@@ -241,6 +249,14 @@ async def admin_upload_file(
             raise HTTPException(status_code=404, detail='Machine not found')
         
         file_data = await file.read()
+
+        from app.config import Config
+        if len(file_data) > Config.MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Max {Config.MAX_UPLOAD_MB} MB"
+            )
+
         
         # Create and save file
         file_obj = FileModel(

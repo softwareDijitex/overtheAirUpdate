@@ -4,6 +4,8 @@ from app import get_database
 import os
 from azure.storage.blob import BlobServiceClient
 from app.config import Config
+from azure.core.exceptions import ResourceExistsError
+
 
 class File:
     def __init__(self, customer_id, machine_id, filename, file_data, version=None, file_id=None):
@@ -61,99 +63,256 @@ class File:
             'file_size': self.file_size
         }
 
+    # def save(self):
+    #     """Save file to Azure Blob Storage and metadata to machine document"""
+    #     try:
+    #         db = get_database()
+    #         if db is None:
+    #             raise Exception("MongoDB connection not available")
+                
+    #         # Check if file with same name AND version already exists for this machine
+    #         customer = db.customers.find_one({'customer_id': self.customer_id})
+    #         if customer and 'machines' in customer:
+    #             machine = next(
+    #                 (m for m in customer['machines'] if m['id'] == self.machine_id), 
+    #                 None
+    #             )
+    #             if machine and 'files' in machine:
+    #                 existing_file = next(
+    #                     (f for f in machine['files'] 
+    #                      if f['filename'] == self.filename and f['version'] == self.version), 
+    #                     None
+    #                 )
+                    
+    #                 if existing_file:
+    #                     # If exact same filename and version exists, ask user to choose different version
+    #                     raise Exception(f"File '{self.filename}' with version '{self.version}' already exists for this machine. Please choose a different version.")
+                
+    #         # For small files (<= 1MB), store directly in machine document
+    #         if self.file_size <= 7 * 1024 * 1024:  # 1MB limit
+    #             file_data = self.to_dict()
+    #             file_data['content'] = self.file_data
+    #             file_data['storage_type'] = 'mongodb'
+                
+    #             # Add file to machine's files array
+    #             result = db.customers.update_one(
+    #                 {'customer_id': self.customer_id, 'machines.id': self.machine_id},
+    #                 {'$push': {'machines.$.files': file_data}}
+    #             )
+                
+    #             if result.modified_count == 0:
+    #                 raise Exception("Customer or machine not found")
+                    
+    #             return self.file_id
+    #         else:
+    #             # For larger files, try Azure Blob Storage
+    #             try:
+    #                 if not Config.AZURE_STORAGE_CONNECTION_STRING or not Config.AZURE_STORAGE_CONTAINER_NAME:
+    #                     raise Exception("Azure Storage configuration not available")
+                        
+    #                 blob_service_client = BlobServiceClient.from_connection_string(
+    #                     Config.AZURE_STORAGE_CONNECTION_STRING
+    #                 )
+    #                 container_client = blob_service_client.get_container_client(
+    #                     Config.AZURE_STORAGE_CONTAINER_NAME
+    #                 )
+                    
+    #                 # Create blob name with customer_id, machine_id and version
+    #                 blob_name = f"{self.customer_id}/{self.machine_id}/{self.filename}_v{self.version}"
+    #                 blob_client = container_client.get_blob_client(blob_name)
+                    
+    #                 # Upload file data (overwrite if exists)
+    #                 blob_client.upload_blob(self.file_data, overwrite=True)
+                    
+    #                 # Save metadata to machine document
+    #                 file_data = self.to_dict()
+    #                 file_data['blob_name'] = blob_name
+    #                 file_data['storage_type'] = 'azure'
+                    
+    #                 result = db.customers.update_one(
+    #                     {'customer_id': self.customer_id, 'machines.id': self.machine_id},
+    #                     {'$push': {'machines.$.files': file_data}}
+    #                 )
+                    
+    #                 if result.modified_count == 0:
+    #                     raise Exception("Customer or machine not found")
+                        
+    #                 return self.file_id
+                    
+    #             except Exception as azure_error:
+    #                 # If Azure fails, fall back to MongoDB storage
+    #                 print(f"Azure Blob Storage failed, falling back to MongoDB: {azure_error}")
+    #                 file_data = self.to_dict()
+    #                 file_data['content'] = self.file_data
+    #                 file_data['storage_type'] = 'mongodb'
+                    
+    #                 result = db.customers.update_one(
+    #                     {'customer_id': self.customer_id, 'machines.id': self.machine_id},
+    #                     {'$push': {'machines.$.files': file_data}}
+    #                 )
+                    
+    #                 if result.modified_count == 0:
+    #                     raise Exception("Customer or machine not found")
+                        
+    #                 return self.file_id
+            
+    #     except Exception as e:
+    #         raise Exception(f"Failed to save file: {str(e)}")
+    # def save(self):
+    #     """Save file to Azure Blob Storage and metadata to machine document"""
+    #     try:
+    #         db = get_database()
+    #         if db is None:
+    #             raise Exception("MongoDB connection not available")
+
+    #         # ⬇️ Enforce global cap again (defense in depth)
+    #         if self.file_size > Config.MAX_UPLOAD_BYTES:
+    #             raise Exception(f"File too large. Max {Config.MAX_UPLOAD_MB}MB")
+
+    #         # Duplicate (filename + version) check unchanged...
+    #         # ...
+
+    #         # Store small files inline in MongoDB; larger go to Azure Blob
+    #         if self.file_size <= Config.INLINE_TO_MONGO_BYTES:
+    #             # (<= 2MB) inline in MongoDB
+    #             file_data = self.to_dict()
+    #             file_data['content'] = self.file_data
+    #             file_data['storage_type'] = 'mongodb'
+
+    #             result = db.customers.update_one(
+    #                 {'customer_id': self.customer_id, 'machines.id': self.machine_id},
+    #                 {'$push': {'machines.$.files': file_data}}
+    #             )
+    #             if result.modified_count == 0:
+    #                 raise Exception("Customer or machine not found")
+    #             return self.file_id
+    #         else:
+    #             # (> 2MB up to 7MB) to Azure Blob
+    #             try:
+    #                 if not Config.AZURE_STORAGE_CONNECTION_STRING or not Config.AZURE_STORAGE_CONTAINER_NAME:
+    #                     raise Exception("Azure Storage configuration not available")
+
+    #                 blob_service_client = BlobServiceClient.from_connection_string(
+    #                     Config.AZURE_STORAGE_CONNECTION_STRING
+    #                 )
+    #                 container_client = blob_service_client.get_container_client(
+    #                     Config.AZURE_STORAGE_CONTAINER_NAME
+    #                 )
+
+    #                 blob_name = f"{self.customer_id}/{self.machine_id}/{self.filename}_v{self.version}"
+    #                 blob_client = container_client.get_blob_client(blob_name)
+    #                 blob_client.upload_blob(self.file_data, overwrite=True)
+
+    #                 file_data = self.to_dict()
+    #                 file_data['blob_name'] = blob_name
+    #                 file_data['storage_type'] = 'azure'
+
+    #                 result = db.customers.update_one(
+    #                     {'customer_id': self.customer_id, 'machines.id': self.machine_id},
+    #                     {'$push': {'machines.$.files': file_data}}
+    #                 )
+    #                 if result.modified_count == 0:
+    #                     raise Exception("Customer or machine not found")
+    #                 return self.file_id
+    #             except Exception as azure_error:
+    #                 # Optional: keep your fallback or remove it if you never want big files in Mongo
+    #                 print(f"Azure Blob Storage failed, falling back to MongoDB: {azure_error}")
+    #                 file_data = self.to_dict()
+    #                 file_data['content'] = self.file_data
+    #                 file_data['storage_type'] = 'mongodb'
+    #                 result = db.customers.update_one(
+    #                     {'customer_id': self.customer_id, 'machines.id': self.machine_id},
+    #                     {'$push': {'machines.$.files': file_data}}
+    #                 )
+    #                 if result.modified_count == 0:
+    #                     raise Exception("Customer or machine not found")
+    #                 return self.file_id
+    #     except Exception as e:
+    #         raise Exception(f"Failed to save file: {str(e)}")
+
     def save(self):
         """Save file to Azure Blob Storage and metadata to machine document"""
         try:
             db = get_database()
             if db is None:
                 raise Exception("MongoDB connection not available")
-                
-            # Check if file with same name AND version already exists for this machine
+
+            # Defense-in-depth hard cap
+            if self.file_size > Config.MAX_UPLOAD_BYTES:
+                raise Exception(f"File too large. Max {Config.MAX_UPLOAD_MB}MB")
+
+            # --- Duplicate (filename + version) guard ---
             customer = db.customers.find_one({'customer_id': self.customer_id})
             if customer and 'machines' in customer:
-                machine = next(
-                    (m for m in customer['machines'] if m['id'] == self.machine_id), 
-                    None
-                )
+                machine = next((m for m in customer['machines'] if m['id'] == self.machine_id), None)
                 if machine and 'files' in machine:
                     existing_file = next(
-                        (f for f in machine['files'] 
-                         if f['filename'] == self.filename and f['version'] == self.version), 
+                        (f for f in machine['files']
+                        if f['filename'] == self.filename and f['version'] == self.version),
                         None
                     )
-                    
                     if existing_file:
-                        # If exact same filename and version exists, ask user to choose different version
-                        raise Exception(f"File '{self.filename}' with version '{self.version}' already exists for this machine. Please choose a different version.")
-                
-            # For small files (<= 1MB), store directly in machine document
-            if self.file_size <= 1024 * 1024:  # 1MB limit
+                        raise Exception(
+                            f"File '{self.filename}' with version '{self.version}' already exists "
+                            f"for this machine. Please choose a different version."
+                        )
+
+            # --- Small files (<= INLINE_TO_MONGO_BYTES) → inline in MongoDB ---
+            if self.file_size <= Config.INLINE_TO_MONGO_BYTES:
                 file_data = self.to_dict()
                 file_data['content'] = self.file_data
                 file_data['storage_type'] = 'mongodb'
-                
-                # Add file to machine's files array
+
                 result = db.customers.update_one(
                     {'customer_id': self.customer_id, 'machines.id': self.machine_id},
                     {'$push': {'machines.$.files': file_data}}
                 )
-                
                 if result.modified_count == 0:
                     raise Exception("Customer or machine not found")
-                    
                 return self.file_id
-            else:
-                # For larger files, try Azure Blob Storage
+
+            # --- Large files (> INLINE_TO_MONGO_BYTES) → MUST go to Azure Blob ---
+            if not (Config.AZURE_STORAGE_CONNECTION_STRING and Config.AZURE_STORAGE_CONTAINER_NAME):
+                raise Exception("Large files require Azure Blob Storage. Azure configuration missing.")
+
+            try:
+                blob_service_client = BlobServiceClient.from_connection_string(
+                    Config.AZURE_STORAGE_CONNECTION_STRING
+                )
+                container_client = blob_service_client.get_container_client(
+                    Config.AZURE_STORAGE_CONTAINER_NAME
+                )
+                # Ensure container exists
                 try:
-                    if not Config.AZURE_STORAGE_CONNECTION_STRING or not Config.AZURE_STORAGE_CONTAINER_NAME:
-                        raise Exception("Azure Storage configuration not available")
-                        
-                    blob_service_client = BlobServiceClient.from_connection_string(
-                        Config.AZURE_STORAGE_CONNECTION_STRING
-                    )
-                    container_client = blob_service_client.get_container_client(
-                        Config.AZURE_STORAGE_CONTAINER_NAME
-                    )
-                    
-                    # Create blob name with customer_id, machine_id and version
-                    blob_name = f"{self.customer_id}/{self.machine_id}/{self.filename}_v{self.version}"
-                    blob_client = container_client.get_blob_client(blob_name)
-                    
-                    # Upload file data (overwrite if exists)
-                    blob_client.upload_blob(self.file_data, overwrite=True)
-                    
-                    # Save metadata to machine document
-                    file_data = self.to_dict()
-                    file_data['blob_name'] = blob_name
-                    file_data['storage_type'] = 'azure'
-                    
-                    result = db.customers.update_one(
-                        {'customer_id': self.customer_id, 'machines.id': self.machine_id},
-                        {'$push': {'machines.$.files': file_data}}
-                    )
-                    
-                    if result.modified_count == 0:
-                        raise Exception("Customer or machine not found")
-                        
-                    return self.file_id
-                    
-                except Exception as azure_error:
-                    # If Azure fails, fall back to MongoDB storage
-                    print(f"Azure Blob Storage failed, falling back to MongoDB: {azure_error}")
-                    file_data = self.to_dict()
-                    file_data['content'] = self.file_data
-                    file_data['storage_type'] = 'mongodb'
-                    
-                    result = db.customers.update_one(
-                        {'customer_id': self.customer_id, 'machines.id': self.machine_id},
-                        {'$push': {'machines.$.files': file_data}}
-                    )
-                    
-                    if result.modified_count == 0:
-                        raise Exception("Customer or machine not found")
-                        
-                    return self.file_id
-            
+                    container_client.create_container()
+                except ResourceExistsError:
+                    pass
+
+                # Blob name: customer/machine/filename_v{version}
+                blob_name = f"{self.customer_id}/{self.machine_id}/{self.filename}_v{self.version}"
+                blob_client = container_client.get_blob_client(blob_name)
+
+                # Upload (overwrite if exists)
+                blob_client.upload_blob(self.file_data, overwrite=True, timeout=60)
+
+                # Save metadata (no content) to Mongo
+                file_data = self.to_dict()
+                file_data['blob_name'] = blob_name
+                file_data['storage_type'] = 'azure'
+
+                result = db.customers.update_one(
+                    {'customer_id': self.customer_id, 'machines.id': self.machine_id},
+                    {'$push': {'machines.$.files': file_data}}
+                )
+                if result.modified_count == 0:
+                    raise Exception("Customer or machine not found")
+
+                return self.file_id
+
+            except Exception as azure_error:
+                # No fallback for big files: surface the real reason
+                raise Exception(f"Azure upload failed: {azure_error}")
+
         except Exception as e:
             raise Exception(f"Failed to save file: {str(e)}")
 

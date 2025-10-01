@@ -109,9 +109,9 @@ const CustomerDashboard = () => {
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 7 * 1024 * 1024) {
         // 2MB limit
-        setError("File size must be less than 2MB");
+        setError("File size must be less than 7MB");
         setSelectedFile(null);
         return;
       }

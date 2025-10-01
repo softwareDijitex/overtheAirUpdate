@@ -16,7 +16,15 @@ class Config:
     DB_NAME = os.environ.get('DB_NAME') or 'overtheairupdate'
     AZURE_STORAGE_CONNECTION_STRING = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
     AZURE_STORAGE_CONTAINER_NAME = os.environ.get('AZURE_STORAGE_CONTAINER_NAME')
-    MAX_FILE_SIZE = (int(os.environ.get('MAX_FILE_SIZE_MB', 2))) * 1024 * 1024
+    MAX_FILE_SIZE = (int(os.environ.get('MAX_FILE_SIZE_MB', 7))) * 1024 * 1024
+    MAX_UPLOAD_BYTES = 7 * 1024 * 1024;
+    MAX_UPLOAD_MB = 7
+
+    # Where to store file content:
+    # <= 2 MB inline in MongoDB, > 2 MB to Azure Blob
+    INLINE_TO_MONGO_MB = 2
+    INLINE_TO_MONGO_BYTES = INLINE_TO_MONGO_MB * 1024 * 1024
+
     
     # Debug: Print environment variables
     print(f"MONGO_URI: {MONGO_URI}")
