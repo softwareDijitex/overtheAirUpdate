@@ -9,7 +9,7 @@ from typing import Optional
 
 file_bp = APIRouter()
 
-@file_bp.post('/upload')
+@file_bp.post('/upload') # this is for admin 
 async def upload_file(
     file: UploadFile = File(...),
     machine_id: str = Form(...),
@@ -60,7 +60,7 @@ async def upload_file(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@file_bp.post('/customer/{customer_id}/machine/{machine_id}/upload')
+@file_bp.post('/customer/{customer_id}/machine/{machine_id}/upload') # this is for customer 
 async def upload_file_to_machine(
     customer_id: str,
     machine_id: str,

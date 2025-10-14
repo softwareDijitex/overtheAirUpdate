@@ -258,18 +258,18 @@ class File:
                         )
 
             # --- Small files (<= INLINE_TO_MONGO_BYTES) → inline in MongoDB ---
-            if self.file_size <= Config.INLINE_TO_MONGO_BYTES:
-                file_data = self.to_dict()
-                file_data['content'] = self.file_data
-                file_data['storage_type'] = 'mongodb'
+            # if self.file_size <= Config.INLINE_TO_MONGO_BYTES:
+            #     file_data = self.to_dict()
+            #     file_data['content'] = self.file_data
+            #     file_data['storage_type'] = 'mongodb'
 
-                result = db.customers.update_one(
-                    {'customer_id': self.customer_id, 'machines.id': self.machine_id},
-                    {'$push': {'machines.$.files': file_data}}
-                )
-                if result.modified_count == 0:
-                    raise Exception("Customer or machine not found")
-                return self.file_id
+            #     result = db.customers.update_one(
+            #         {'customer_id': self.customer_id, 'machines.id': self.machine_id},
+            #         {'$push': {'machines.$.files': file_data}}
+            #     )
+            #     if result.modified_count == 0:
+            #         raise Exception("Customer or machine not found")
+            #     return self.file_id
 
             # --- Large files (> INLINE_TO_MONGO_BYTES) → MUST go to Azure Blob ---
             if not (Config.AZURE_STORAGE_CONNECTION_STRING and Config.AZURE_STORAGE_CONTAINER_NAME):
@@ -306,7 +306,7 @@ class File:
                 )
                 if result.modified_count == 0:
                     raise Exception("Customer or machine not found")
-
+                print(f"File saved to Azure Blob Storage: {self.file_id}")
                 return self.file_id
 
             except Exception as azure_error:

@@ -48,6 +48,10 @@ const CustomerDashboard = () => {
   //     fetchMachines();
   //   }
   // }, [user]);
+  // useEffect(() => {
+  //   console.log("Hello");
+  // }, [selectedFileVersions]);
+
 
   useEffect(() => {
     if (success) {
@@ -250,6 +254,25 @@ const CustomerDashboard = () => {
     }
   };
 
+  // const handleDeleteFile = async (filename, version) => {
+  //   if (
+  //     !window.confirm(
+  //       `Are you sure you want to delete ${filename} version ${version}?`
+  //     )
+  //   ) {
+  //     return;
+  //   }
+
+  //   try {
+  //     await axios.delete(
+  //       `/api/files/delete/${user.customer_id}/${selectedMachine.id}/${filename}/${version}`
+  //     );
+  //     setSuccess("");
+  //     fetchMachineFiles(selectedMachine.id);
+  //   } catch (error) {
+  //     setError("Failed to delete file");
+  //   }
+  // };
   const handleDeleteFile = async (filename, version) => {
     if (
       !window.confirm(
@@ -263,12 +286,22 @@ const CustomerDashboard = () => {
       await axios.delete(
         `/api/files/delete/${user.customer_id}/${selectedMachine.id}/${filename}/${version}`
       );
+      
+      // Immediately update the modal's version list
+      const updatedVersions = selectedFileVersions.filter(
+        v => String(v.version) !== String(version)
+      );
+      setSelectedFileVersions(updatedVersions);
+      
       setSuccess("File deleted successfully");
+      
+      // Refresh the main files list
       fetchMachineFiles(selectedMachine.id);
     } catch (error) {
       setError("Failed to delete file");
     }
   };
+
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
