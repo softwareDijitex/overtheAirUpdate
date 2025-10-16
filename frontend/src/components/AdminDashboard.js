@@ -134,7 +134,7 @@ const AdminDashboard = () => {
     if (file) {
       if (file.size > 7 * 1024 * 1024) {
         // 2MB limit
-        setError("File size must be less than 2MB");
+        setError("File size must be less than 7MB");
         setSelectedFile(null);
         return;
       }

@@ -108,6 +108,7 @@ const CustomerDashboard = () => {
   const handleMachineSelect = (machine) => {
     setSelectedMachine(machine);
     fetchMachineFiles(machine.id);
+    setActiveTab("files");
   };
 
   const handleFileSelect = (e) => {

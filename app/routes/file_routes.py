@@ -174,6 +174,7 @@ async def get_machine_files(
     machine_id: str,
     current_user=Depends(customer_required)
 ):
+    # Basically when you click on a machine in the customer dashboard, this route is called - to get all files for that machine
     """Get all files for a specific machine"""
     try:
         # For customers, they can only see their own files
@@ -329,7 +330,10 @@ async def admin_get_machine_files(
     machine_id: str,
     current_user=Depends(admin_required)
 ):
-    """Admin: Get all files for any machine"""
+    # Basically when you click on a machine in the admin dashboard, this route is called - to get all files for that machine for that customer
+
+    """Admin: Get all files for any machine""" 
+
     try:
         files = FileModel.get_machine_files(customer_id, machine_id)
         return {'files': files}
@@ -342,7 +346,7 @@ async def admin_get_customer_files(
     customer_id: str,
     current_user=Depends(admin_required)
 ):
-    """Admin: Get all files for any customer"""
+    """Admin: Get all machines for any customer"""
     try:
         files = FileModel.get_customer_files(customer_id)
         return {'files': files}
