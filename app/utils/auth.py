@@ -148,6 +148,8 @@ def generate_token(customer_id: str, email: str, is_admin: bool = False) -> str:
 def verify_token(token: str) -> Optional[dict]:
     """Verify JWT token and return payload (or None if invalid/expired)"""
     try:
+        print("get_current_user called")
+        print("token:", token)
         payload = jwt.decode(token, Config.SECRET_KEY, algorithms=["HS256"])
         return payload
     except jwt.ExpiredSignatureError:

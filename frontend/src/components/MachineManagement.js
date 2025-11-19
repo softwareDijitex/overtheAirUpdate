@@ -151,7 +151,7 @@ const MachineManagement = ({
       } else {
         // Create new machine
         const endpoint = isAdmin
-          ? `/api/machines/admin/`
+          ? `/api/machines/admin`
           : `/api/machines/customer/${customerId}`;
 
         const requestData = { ...formData, customer_id: customerId };
