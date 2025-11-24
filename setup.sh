@@ -143,10 +143,10 @@ print_status "Setting Azure Storage test configuration..."
 update_config "AZURE_STORAGE_CONNECTION_STRING" "DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=testkey;EndpointSuffix=core.windows.net"
 update_config "AZURE_STORAGE_CONTAINER_NAME" "test-container"
 
-# Set Flask configuration
-# update_config "FLASK_APP" "main.py"
-# update_config "FLASK_ENV" "development"
-# update_config "MAX_FILE_SIZE_MB" "2"
+# Set FastAPI configuration
+update_config "FASTAPI_APP" "app.py"
+update_config "FASTAPI_ENV" "development"
+update_config "MAX_FILE_SIZE_MB" "10"
 
 print_success "Environment variables configured!"
 
@@ -159,7 +159,7 @@ cat > start_backend.sh << 'EOF'
 echo "Starting Customer Management System Backend..."
 echo "=============================================="
 source venv/bin/activate
-python3 main.py
+python3 app.py
 EOF
 
 # Create frontend startup script
