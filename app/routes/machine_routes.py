@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 
+from app.models import customer
 from app.models.machine import Machine
 from app.models.customer import Customer
 from app.utils.auth import verify_token
@@ -57,11 +58,19 @@ class MachineResponse(MachineBase):
 # ---------- Customer-scoped routes ----------
 @machine_bp.get("/customer/{customer_id}", response_model=List[MachineResponse])
 async def get_customer_machines(customer_id: str, current_user: dict = Depends(get_current_user)):
-    if not (current_user.get("is_admin") or current_user["customer_id"] == customer_id):
-        raise HTTPException(status_code=403, detail="Unauthorized access")
-
+    # if not (current_user.get("is_admin") or current_user["customer_id"] == customer_id):
+    #     raise HTTPException(status_code=403, detail="Unauthorized access")
+    print(f"Customer id : {customer_id}")
     machines = Machine.get_customer_machines(customer_id)
     return [MachineResponse(**m.to_dict()) for m in machines]
+
+# @machine_bp.get("/customer/{customer_id}", response_model=List[MachineResponse])
+# async def get_customer_machines(customer_id: str):
+#     # if not (current_user.get("is_admin") or current_user["customer_id"] == customer_id):
+#     #     raise HTTPException(status_code=403, detail="Unauthorized access")
+#     print(f"Customer id : {customer_id}")
+#     machines = Machine.get_customer_machines(customer_id)
+#     return [MachineResponse(**m.to_dict()) for m in machines]
 
 @machine_bp.post("/customer/{customer_id}", response_model=MachineResponse, status_code=201)
 async def create_customer_machine(customer_id: str, body: MachineCreate, current_user: dict = Depends(get_current_user)):
