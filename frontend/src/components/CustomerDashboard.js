@@ -30,24 +30,28 @@ import MachineManagement from "./MachineManagement";
 const CustomerDashboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("machines");
-  const [machines, setMachines] = useState([]);
+  // const [machines, setMachines] = useState([]);
   const [selectedMachine, setSelectedMachine] = useState(null);
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [versionNumber, setVersionNumber] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [selectedFileVersions, setSelectedFileVersions] = useState([]);
   const [selectedFileName, setSelectedFileName] = useState("");
 
-  useEffect(() => {
-    if (user && user.customer_id) {
-      fetchMachines();
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (user && user.customer_id) {
+  //     fetchMachines();
+  //   }
+  // }, [user]);
+  // useEffect(() => {
+  //   console.log("Hello");
+  // }, [selectedFileVersions]);
+
 
   useEffect(() => {
     if (success) {
@@ -56,33 +60,33 @@ const CustomerDashboard = () => {
     }
   }, [success]);
 
-  const fetchMachines = async () => {
-    if (!user || !user.customer_id) {
-      console.log("User or customer_id not available yet");
-      return;
-    }
+  // const fetchMachines = async () => {
+  //   if (!user || !user.customer_id) {
+  //     console.log("User or customer_id not available yet");
+  //     return;
+  //   }
 
-    try {
-      setLoading(true);
-      setError(""); // Clear any previous errors
-      const response = await axios.get(
-        `/api/machines/customer/${user.customer_id}`
-      );
-      setMachines(response.data || []);
-    } catch (error) {
-      // Only show error for actual API failures (4xx/5xx status codes)
-      if (error.response && error.response.status >= 400) {
-        setError("Failed to fetch machines");
-        console.error("Error fetching machines:", error);
-      } else {
-        // For network errors or other issues, still show error
-        setError("Failed to fetch machines");
-        console.error("Error fetching machines:", error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  //   try {
+  //     setLoading(true);
+  //     setError(""); // Clear any previous errors
+  //     const response = await axios.get(
+  //       `/api/machines/customer/${user.customer_id}`
+  //     );
+  //     setMachines(response.data || []);
+  //   } catch (error) {
+  //     // Only show error for actual API failures (4xx/5xx status codes)
+  //     if (error.response && error.response.status >= 400) {
+  //       setError("Failed to fetch machines");
+  //       console.error("Error fetching machines:", error);
+  //     } else {
+  //       // For network errors or other issues, still show error
+  //       setError("Failed to fetch machines");
+  //       console.error("Error fetching machines:", error);
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const fetchMachineFiles = async (machineId) => {
     if (!user || !user.customer_id) {
@@ -104,14 +108,15 @@ const CustomerDashboard = () => {
   const handleMachineSelect = (machine) => {
     setSelectedMachine(machine);
     fetchMachineFiles(machine.id);
+    setActiveTab("files");
   };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 7 * 1024 * 1024) {
         // 2MB limit
-        setError("File size must be less than 2MB");
+        setError("File size must be less than 7MB");
         setSelectedFile(null);
         return;
       }
@@ -250,6 +255,25 @@ const CustomerDashboard = () => {
     }
   };
 
+  // const handleDeleteFile = async (filename, version) => {
+  //   if (
+  //     !window.confirm(
+  //       `Are you sure you want to delete ${filename} version ${version}?`
+  //     )
+  //   ) {
+  //     return;
+  //   }
+
+  //   try {
+  //     await axios.delete(
+  //       `/api/files/delete/${user.customer_id}/${selectedMachine.id}/${filename}/${version}`
+  //     );
+  //     setSuccess("");
+  //     fetchMachineFiles(selectedMachine.id);
+  //   } catch (error) {
+  //     setError("Failed to delete file");
+  //   }
+  // };
   const handleDeleteFile = async (filename, version) => {
     if (
       !window.confirm(
@@ -263,12 +287,22 @@ const CustomerDashboard = () => {
       await axios.delete(
         `/api/files/delete/${user.customer_id}/${selectedMachine.id}/${filename}/${version}`
       );
+      
+      // Immediately update the modal's version list
+      const updatedVersions = selectedFileVersions.filter(
+        v => String(v.version) !== String(version)
+      );
+      setSelectedFileVersions(updatedVersions);
+      
       setSuccess("File deleted successfully");
+      
+      // Refresh the main files list
       fetchMachineFiles(selectedMachine.id);
     } catch (error) {
       setError("Failed to delete file");
     }
   };
+
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
@@ -282,15 +316,15 @@ const CustomerDashboard = () => {
     return new Date(dateString).toLocaleString();
   };
 
-  if (loading) {
-    return (
-      <Container className="text-center mt-4">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-      </Container>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <Container className="text-center mt-4">
+  //       <Spinner animation="border" role="status">
+  //         <span className="visually-hidden">Loading...</span>
+  //       </Spinner>
+  //     </Container>
+  //   );
+  // }
 
   if (!user || !user.customer_id) {
     return (
