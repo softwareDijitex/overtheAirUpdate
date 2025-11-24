@@ -75,8 +75,8 @@ print_status "Installing Python dependencies..."
 pip install -r requirements.txt
 
 # Install additional dependencies that might be missing
-print_status "Installing additional dependencies..."
-pip install flask-cors Flask-PyMongo
+# print_status "Installing additional dependencies..."
+# pip install flask-cors Flask-PyMongo
 
 print_success "Backend dependencies installed!"
 
@@ -144,9 +144,9 @@ update_config "AZURE_STORAGE_CONNECTION_STRING" "DefaultEndpointsProtocol=https;
 update_config "AZURE_STORAGE_CONTAINER_NAME" "test-container"
 
 # Set Flask configuration
-update_config "FLASK_APP" "main.py"
-update_config "FLASK_ENV" "development"
-update_config "MAX_FILE_SIZE_MB" "2"
+# update_config "FLASK_APP" "main.py"
+# update_config "FLASK_ENV" "development"
+# update_config "MAX_FILE_SIZE_MB" "2"
 
 print_success "Environment variables configured!"
 
