@@ -1,6 +1,7 @@
 # FastAPI and ASGI server
 fastapi==0.115.14
 uvicorn[standard]==0.35.0
+gunicorn==21.2.0
 
 # Database and MongoDB
 pymongo

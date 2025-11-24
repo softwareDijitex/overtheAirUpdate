@@ -64,5 +64,5 @@ def init_collections():
         print(f"❌ Database initialization failed: {e}")
         return False
 
-if __name__ == "__main__":
+if __name__ == "__app__":
     init_collections() 

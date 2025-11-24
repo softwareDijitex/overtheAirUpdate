@@ -5,18 +5,21 @@ This guide outlines all the changes needed to migrate from Flask to FastAPI.
 ## ✅ Completed Changes
 
 ### 1. Customer Routes (`app/routes/customer_routes.py`)
+
 - ✅ Converted Flask routes to FastAPI endpoints
 - ✅ Added Pydantic models for request/response validation
 - ✅ Updated error handling to use HTTPException
 - ✅ Removed Flask-specific decorators and imports
 - ✅ Added proper async/await support
 
-### 2. Main Application (`main.py`)
+### 2. Main Application (`app.py`)
+
 - ✅ Added API route imports and inclusion
 - ✅ Added FastAPI metadata (title, description, version)
 - ✅ Added API tags for better documentation
 
 ### 3. Server Startup (`start_backend.sh`)
+
 - ✅ Updated to use uvicorn instead of Flask development server
 
 ## 🔄 Remaining Changes Needed
@@ -24,11 +27,13 @@ This guide outlines all the changes needed to migrate from Flask to FastAPI.
 ### 1. Machine Routes (`app/routes/machine_routes.py`)
 
 **Current Issues:**
+
 - Uses Flask imports and decorators
 - Uses Flask request objects
 - Uses Flask jsonify responses
 
 **Required Changes:**
+
 ```python
 # Replace Flask imports
 from flask import request, jsonify
@@ -70,11 +75,13 @@ return {'machines': machines_data}
 ### 2. File Routes (`app/routes/file_routes.py`)
 
 **Current Issues:**
+
 - Uses Flask file upload handling
 - Uses Flask request.files
 - Uses Flask send_file
 
 **Required Changes:**
+
 ```python
 # Replace Flask imports
 from flask import request, jsonify, send_file
@@ -101,10 +108,12 @@ return FileResponse(...)
 ### 3. Authentication Utilities (`app/utils/auth.py`)
 
 **Current Issues:**
+
 - Uses Flask request objects
 - Uses Flask decorators
 
 **Required Changes:**
+
 ```python
 # Replace Flask imports
 from flask import request, jsonify
@@ -117,12 +126,12 @@ def token_required(request: Request):
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
         raise HTTPException(status_code=401, detail='Token is missing')
-    
+
     token = auth_header.split(" ")[1]
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail='Token is invalid or expired')
-    
+
     return payload
 
 # Use as dependency
@@ -134,10 +143,12 @@ async def protected_route(token_data: dict = Depends(token_required)):
 ### 4. Database Models
 
 **Current Issues:**
+
 - Models use Flask-PyMongo
 - Need to work with FastAPI async patterns
 
 **Required Changes:**
+
 ```python
 # Consider using motor for async MongoDB operations
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -155,9 +166,11 @@ async def find_by_email(email: str):
 ### 5. Configuration (`app/config.py`)
 
 **Current Issues:**
+
 - Uses Flask configuration patterns
 
 **Required Changes:**
+
 ```python
 # Add Pydantic settings
 from pydantic_settings import BaseSettings
@@ -179,6 +192,7 @@ settings = Settings()
 ### 6. Dependencies (`requirements.txt`)
 
 **Add FastAPI dependencies:**
+
 ```
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
@@ -189,6 +203,7 @@ motor>=3.3.0  # For async MongoDB
 ```
 
 **Remove Flask dependencies:**
+
 ```
 flask
 flask-cors
@@ -199,6 +214,7 @@ flask-bcrypt
 ### 7. Frontend Configuration
 
 **Update API error handling:**
+
 ```javascript
 // In AuthContext.js, update error handling
 catch (error) {
@@ -213,29 +229,34 @@ catch (error) {
 ## 🚀 Migration Steps
 
 ### Step 1: Install FastAPI Dependencies
+
 ```bash
 pip install fastapi uvicorn pydantic pydantic-settings python-multipart motor
 ```
 
 ### Step 2: Update Machine Routes
+
 ```bash
 # Convert machine_routes.py to FastAPI format
 # Follow the pattern established in customer_routes.py
 ```
 
 ### Step 3: Update File Routes
+
 ```bash
 # Convert file_routes.py to FastAPI format
 # Update file upload/download handling
 ```
 
 ### Step 4: Update Authentication
+
 ```bash
 # Convert auth.py decorators to FastAPI dependencies
 # Update token handling
 ```
 
 ### Step 5: Test All Endpoints
+
 ```bash
 # Run the debug script
 python test/test_login_debug.py
@@ -244,6 +265,7 @@ python test/test_login_debug.py
 ```
 
 ### Step 6: Update Frontend Error Handling
+
 ```bash
 # Update error handling in React components
 # Test login/register flows
@@ -252,6 +274,7 @@ python test/test_login_debug.py
 ## 🔧 Testing
 
 ### Test the Login Endpoint
+
 ```bash
 # Start the FastAPI server
 ./start_backend.sh
@@ -263,6 +286,7 @@ curl -X POST "http://localhost:8000/api/customers/login" \
 ```
 
 ### Test API Documentation
+
 ```bash
 # Visit FastAPI auto-generated docs
 http://localhost:8000/docs
@@ -289,9 +313,9 @@ http://localhost:8000/redoc
 ## 🎯 Next Steps
 
 1. Complete machine routes migration
-2. Complete file routes migration  
+2. Complete file routes migration
 3. Update authentication utilities
 4. Update database models for async operations
 5. Update frontend error handling
 6. Comprehensive testing
-7. Performance optimization 
+7. Performance optimization
