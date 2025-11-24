@@ -64,6 +64,13 @@ const AdminDashboard = () => {
     }
   }, [success]);
 
+
+
+  // useEffect(() => {
+  //   console.log("Hello");
+  // }, [selectedFileVersions]);
+
+
   const fetchCustomers = async () => {
     try {
       setLoading(true);
@@ -125,7 +132,7 @@ const AdminDashboard = () => {
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 7 * 1024 * 1024) {
         // 2MB limit
         setError("File size must be less than 2MB");
         setSelectedFile(null);
@@ -277,13 +284,20 @@ const AdminDashboard = () => {
       await axios.delete(
         `/api/files/admin/delete/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}/${version}`
       );
+      
+      setSelectedFileVersions(prevVersions => 
+        
+        prevVersions.filter(v => v.version !== version)
+      );
       setSuccess("File deleted successfully");
+      console.log("Hello");
       fetchMachineFiles(selectedCustomer.customer_id, selectedMachine.id);
     } catch (error) {
       setError("Failed to delete file");
     }
   };
 
+  
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
