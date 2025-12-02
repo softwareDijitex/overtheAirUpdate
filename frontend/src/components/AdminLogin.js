@@ -34,7 +34,14 @@ const AdminLogin = () => {
     const result = await adminLogin(email, password);
 
     if (result.success) {
-      navigate("/admin/dashboard");
+      // console.log(result)
+      if (localStorage.getItem("activeRole") == 'admin'){
+        navigate("/admin/dashboard");
+      }
+      else{
+        navigate("/newdashboard")
+      }
+      
     } else {
       setError(result.error);
     }

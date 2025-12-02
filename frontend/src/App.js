@@ -72,6 +72,7 @@ import CustomerDashboard from "./components/CustomerDashboard";
 import CustomerLogin from "./components/Login";
 import Register from "./components/Register";
 import { PrivateRoute, AdminRoute } from "./Guards"; // NEW
+import NewDashboard from "./components/NewDashboard";
 
 // REMOVED: inline guards (we now use the shared ones in routes/Guards.jsx)
 // function PrivateRoute({ children }) {
@@ -109,6 +110,13 @@ function App() {
                 <AdminRoute>
                   <AdminDashboard />
                 </AdminRoute>
+              }
+            />
+
+            <Route
+              path="/newdashboard"
+              element={
+                <NewDashboard />
               }
             />
 

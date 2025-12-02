@@ -151,6 +151,14 @@ async def admin_login(admin_data: AdminLogin):
                 customer_id='admin',
                 token=token
             )
+        elif admin_data.email:
+            token = generate_token('customer', admin_data.email, is_admin=False)
+            return LoginResponse(
+                message='New Dashboard login successful',
+                customer_id='customer',
+                token=token
+            )
+
         else:
             raise HTTPException(status_code=401, detail='Invalid admin credentials')
             

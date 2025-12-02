@@ -438,7 +438,6 @@ export function AuthProvider({ children }) {
       return;
     }
     const role = decoded.is_admin ? "admin" : "customer";
-
     // Persist globally (affects ALL tabs)
     localStorage.setItem(TOKEN_KEY, jwt);
     localStorage.setItem(ROLE_KEY, role);
