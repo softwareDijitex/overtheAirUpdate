@@ -40,8 +40,17 @@ const MachineManagement = ({
     description: "",
   });
   const [successMessage, setSuccessMessage] = useState("");
-
   const fetchMachines = async () => {
+    // Don't fetch if customerId is not available
+    if (!customerId) {
+      console.log("Customer ID not available yet");
+      setLoading(false);
+      return;
+    }
+    // if(localStorage.getItem(token)){
+    //   console.log(token)
+    // }
+    console.log(localStorage.getItem("token"));
     try {
       setLoading(true);
       setError(""); // Clear any previous errors
@@ -49,25 +58,76 @@ const MachineManagement = ({
         ? `/api/machines/admin/customer/${customerId}`
         : `/api/machines/customer/${customerId}`;
 
-      const response = await axios.get(endpoint);
+      //force to send token always
+      const response = await axios.get(endpoint, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      // const response = await axios.get(endpoint);
       setMachines(response.data || []);
     } catch (err) {
-      // Only show error for actual API failures (4xx/5xx status codes)
-      if (err.response && err.response.status >= 400) {
-        setError("Failed to fetch machines");
-        console.error("Error fetching machines:", err);
+      // Check if it's a real error or just empty data
+      if (err.response) {
+        // Server responded with a status code
+        if (err.response.status === 404) {
+          // 404 means no machines found - not an error
+          setMachines([]);
+          console.log("No machines found for customer (404)");
+        } else if (err.response.status >= 500) {
+          // Server errors (5xx)
+          setError("Server error: Unable to fetch machines");
+          console.error("Server error fetching machines:", err);
+        } else if (err.response.status >= 400) {
+          // Client errors (4xx) except 404
+          setError(err.response.data?.error || "Failed to fetch machines");
+          console.error("Error fetching machines:", err);
+        }
+      } else if (err.request) {
+        // Request made but no response (network error)
+        setError("Network error: Unable to connect to server");
+        console.error("Network error:", err);
       } else {
-        // For network errors or other issues, still show error
-        setError("Failed to fetch machines");
-        console.error("Error fetching machines:", err);
+        // Something happened in setting up the request
+        console.error("Error setting up request:", err);
       }
     } finally {
       setLoading(false);
     }
   };
+  // const fetchMachines = async () => {
 
+  //   try {
+  //     setLoading(true);
+  //     setError(""); // Clear any previous errors
+  //     const endpoint = isAdmin
+  //       ? `/api/machines/admin/customer/${customerId}`
+  //       : `/api/machines/customer/${customerId}`;
+
+  //     const response = await axios.get(endpoint);
+  //     setMachines(response.data || []);
+  //   } catch (err) {
+  //     // Only show error for actual API failures (4xx/5xx status codes)
+  //     if (err.response && err.response.status >= 400) {
+  //       setError("Failed to fetch machines");
+  //       console.error("Error fetching machines:", err);
+  //     } else {
+  //       // For network errors or other issues, still show error
+  //       setError("Failed to fetch machines");
+  //       console.error("Error fetching machines:", err);
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // useEffect(() => {
+  //   fetchMachines();
+  // }, [customerId, isAdmin]);
   useEffect(() => {
-    fetchMachines();
+    if (customerId) {
+      fetchMachines();
+    } else {
+      setLoading(false);
+    }
   }, [customerId, isAdmin]);
 
   useEffect(() => {
@@ -91,7 +151,7 @@ const MachineManagement = ({
       } else {
         // Create new machine
         const endpoint = isAdmin
-          ? `/api/machines/admin/`
+          ? `/api/machines/admin`
           : `/api/machines/customer/${customerId}`;
 
         const requestData = { ...formData, customer_id: customerId };
