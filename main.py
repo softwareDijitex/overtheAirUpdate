@@ -62,6 +62,7 @@ app = FastAPI(
 )
 
 # Add CORS middleware BEFORE including routes
+# If get CORS issue - try killing all processes running on port 8000 - some might be stale
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
