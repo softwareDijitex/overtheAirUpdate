@@ -284,16 +284,33 @@ const AdminDashboard = () => {
       await axios.delete(
         `/api/files/admin/delete/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}/${version}`
       );
-      
-      setSelectedFileVersions(prevVersions => 
-        
+      setSelectedFileVersions(prevVersions =>
         prevVersions.filter(v => v.version !== version)
       );
       setSuccess("File deleted successfully");
-      console.log("Hello");
       fetchMachineFiles(selectedCustomer.customer_id, selectedMachine.id);
     } catch (error) {
-      setError("Failed to delete file");
+      setError(error.response?.data?.detail || "Failed to delete file");
+    }
+  };
+
+  const handleDeleteAllVersions = async (filename, totalVersions) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete ALL ${totalVersions} version(s) of "${filename}"? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await axios.delete(
+        `/api/files/admin/delete/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}`
+      );
+      setSuccess(`All versions of "${filename}" deleted successfully`);
+      fetchMachineFiles(selectedCustomer.customer_id, selectedMachine.id);
+    } catch (error) {
+      setError(error.response?.data?.detail || "Failed to delete file");
     }
   };
 
@@ -574,6 +591,19 @@ const AdminDashboard = () => {
                                     >
                                       <Eye className="me-1" />
                                       Versions
+                                    </Button>
+                                    <Button
+                                      variant="outline-danger"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleDeleteAllVersions(
+                                          file.filename,
+                                          file.total_versions
+                                        )
+                                      }
+                                    >
+                                      <Trash className="me-1" />
+                                      Delete File
                                     </Button>
                                   </td>
                                 </tr>

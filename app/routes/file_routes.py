@@ -366,6 +366,38 @@ async def admin_delete_file(
     try:
         FileModel.delete_file(customer_id, machine_id, filename, version)
         return {'message': 'File deleted successfully'}
-        
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@file_bp.delete('/delete/{customer_id}/{machine_id}/{filename}')
+async def delete_all_file_versions(
+    customer_id: str,
+    machine_id: str,
+    filename: str,
+    current_user=Depends(customer_required)
+):
+    """Delete all versions of a file"""
+    try:
+        if current_user.customer_id != customer_id:
+            raise HTTPException(status_code=403, detail='Unauthorized')
+        FileModel.delete_all_versions(customer_id, machine_id, filename)
+        return {'message': 'All versions deleted successfully'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@file_bp.delete('/admin/delete/{customer_id}/{machine_id}/{filename}')
+async def admin_delete_all_file_versions(
+    customer_id: str,
+    machine_id: str,
+    filename: str,
+    current_user=Depends(admin_required)
+):
+    """Admin: Delete all versions of a file"""
+    try:
+        FileModel.delete_all_versions(customer_id, machine_id, filename)
+        return {'message': 'All versions deleted successfully'}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

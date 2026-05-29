@@ -554,4 +554,57 @@ class File:
             return True
             
         except Exception as e:
-            raise Exception(f"Failed to delete file: {str(e)}") 
+            raise Exception(f"Failed to delete file: {str(e)}")
+
+    @staticmethod
+    def delete_all_versions(customer_id, machine_id, filename):
+        """Delete all versions of a file from a machine"""
+        try:
+            db = get_database()
+            if db is None:
+                raise Exception("MongoDB connection not available")
+
+            customer = db.customers.find_one({'customer_id': customer_id})
+            if not customer or 'machines' not in customer:
+                raise Exception("Customer or machine not found")
+
+            machine = next(
+                (m for m in customer['machines'] if m['id'] == machine_id),
+                None
+            )
+            if not machine or 'files' not in machine:
+                raise Exception("Machine not found or has no files")
+
+            file_versions = [f for f in machine['files'] if f['filename'] == filename]
+            if not file_versions:
+                raise Exception("File not found")
+
+            # Delete all Azure blobs for this filename
+            for file_data in file_versions:
+                if file_data.get('storage_type') == 'azure' and 'blob_name' in file_data:
+                    try:
+                        if Config.AZURE_STORAGE_CONNECTION_STRING and Config.AZURE_STORAGE_CONTAINER_NAME:
+                            blob_service_client = BlobServiceClient.from_connection_string(
+                                Config.AZURE_STORAGE_CONNECTION_STRING
+                            )
+                            container_client = blob_service_client.get_container_client(
+                                Config.AZURE_STORAGE_CONTAINER_NAME
+                            )
+                            blob_client = container_client.get_blob_client(file_data['blob_name'])
+                            blob_client.delete_blob()
+                    except Exception as azure_error:
+                        print(f"Warning: Failed to delete blob from Azure: {azure_error}")
+
+            # Pull all entries matching this filename in one operation
+            result = db.customers.update_one(
+                {'customer_id': customer_id, 'machines.id': machine_id},
+                {'$pull': {'machines.$.files': {'filename': filename}}}
+            )
+
+            if result.modified_count == 0:
+                raise Exception("File not found")
+
+            return True
+
+        except Exception as e:
+            raise Exception(f"Failed to delete all versions: {str(e)}")
