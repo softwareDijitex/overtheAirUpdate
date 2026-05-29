@@ -194,15 +194,14 @@ const MachineManagement = ({
       await axios.delete(endpoint);
       setSuccessMessage("Machine deleted successfully");
 
-      // If the deleted machine was selected, clear the selection
       if (selectedMachine && selectedMachine.id === machineId) {
         onMachineSelect(null);
       }
-
-      fetchMachines();
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to delete machine");
+      setError(err.response?.data?.detail || err.response?.data?.error || "Failed to delete machine");
       console.error("Error deleting machine:", err);
+    } finally {
+      fetchMachines();
     }
   };
 
