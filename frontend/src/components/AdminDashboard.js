@@ -124,9 +124,10 @@ const AdminDashboard = () => {
 
   const handleMachineSelect = (machine) => {
     setSelectedMachine(machine);
-    fetchMachineFiles(selectedCustomer.customer_id, machine.id);
-    // Automatically switch to files tab
-    setActiveTab("files");
+    if (machine) {
+      fetchMachineFiles(selectedCustomer.customer_id, machine.id);
+      setActiveTab("files");
+    }
   };
 
   const handleFileSelect = (e) => {

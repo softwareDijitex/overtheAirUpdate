@@ -139,6 +139,7 @@ const MachineManagement = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
     try {
       if (editingMachine) {
         // Update existing machine
@@ -165,7 +166,7 @@ const MachineManagement = ({
       setFormData({ name: "", mac_address: "", description: "" });
       fetchMachines();
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to save machine");
+      setError(err.response?.data?.detail || err.response?.data?.error || "Failed to save machine");
       console.error("Error saving machine:", err);
     }
   };
@@ -193,15 +194,14 @@ const MachineManagement = ({
       await axios.delete(endpoint);
       setSuccessMessage("Machine deleted successfully");
 
-      // If the deleted machine was selected, clear the selection
       if (selectedMachine && selectedMachine.id === machineId) {
         onMachineSelect(null);
       }
-
-      fetchMachines();
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to delete machine");
+      setError(err.response?.data?.detail || err.response?.data?.error || "Failed to delete machine");
       console.error("Error deleting machine:", err);
+    } finally {
+      fetchMachines();
     }
   };
 
