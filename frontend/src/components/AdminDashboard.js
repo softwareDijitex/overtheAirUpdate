@@ -65,17 +65,14 @@ const AdminDashboard = () => {
     }
   }, [success]);
 
-
-
   // useEffect(() => {
   //   console.log("Hello");
   // }, [selectedFileVersions]);
 
-
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/api/customers/`, {
+      const response = await axios.get(`/api/customers/`, {
         headers: {
           Authorization: `Bearer ${token}`, // Make sure you have the admin token here
         },
@@ -92,7 +89,7 @@ const AdminDashboard = () => {
   const fetchCustomerMachines = async (customerId) => {
     try {
       const response = await axios.get(
-        `/api/machines/admin/customer/${customerId}`
+        `/api/machines/admin/customer/${customerId}`,
       );
       setMachines(response.data || []);
     } catch (error) {
@@ -105,7 +102,7 @@ const AdminDashboard = () => {
     try {
       // Use admin-specific endpoint for file listing
       const response = await axios.get(
-        `/api/files/admin/machine/${customerId}/${machineId}`
+        `/api/files/admin/machine/${customerId}/${machineId}`,
       );
       setFiles(response.data.files || []);
     } catch (error) {
@@ -245,7 +242,7 @@ const AdminDashboard = () => {
     try {
       const response = await axios.get(
         `/api/files/admin/download/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}/${version}`,
-        { responseType: "blob" }
+        { responseType: "blob" },
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -263,7 +260,7 @@ const AdminDashboard = () => {
   const handleViewVersions = async (filename) => {
     try {
       const response = await axios.get(
-        `/api/files/admin/versions/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}`
+        `/api/files/admin/versions/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}`,
       );
       setSelectedFileVersions(response.data.versions || []);
       setSelectedFileName(filename);
@@ -276,7 +273,7 @@ const AdminDashboard = () => {
   const handleDeleteFile = async (filename, version) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete ${filename} version ${version}?`
+        `Are you sure you want to delete ${filename} version ${version}?`,
       )
     ) {
       return;
@@ -284,10 +281,10 @@ const AdminDashboard = () => {
 
     try {
       await axios.delete(
-        `/api/files/admin/delete/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}/${version}`
+        `/api/files/admin/delete/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}/${version}`,
       );
-      setSelectedFileVersions(prevVersions =>
-        prevVersions.filter(v => v.version !== version)
+      setSelectedFileVersions((prevVersions) =>
+        prevVersions.filter((v) => v.version !== version),
       );
       setSuccess("File deleted successfully");
       fetchMachineFiles(selectedCustomer.customer_id, selectedMachine.id);
@@ -299,7 +296,7 @@ const AdminDashboard = () => {
   const handleDeleteAllVersions = async (filename, totalVersions) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete ALL ${totalVersions} version(s) of "${filename}"? This cannot be undone.`
+        `Are you sure you want to delete ALL ${totalVersions} version(s) of "${filename}"? This cannot be undone.`,
       )
     ) {
       return;
@@ -307,7 +304,7 @@ const AdminDashboard = () => {
 
     try {
       await axios.delete(
-        `/api/files/admin/delete/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}`
+        `/api/files/admin/delete/${selectedCustomer.customer_id}/${selectedMachine.id}/${filename}`,
       );
       setSuccess(`All versions of "${filename}" deleted successfully`);
       fetchMachineFiles(selectedCustomer.customer_id, selectedMachine.id);
@@ -316,7 +313,6 @@ const AdminDashboard = () => {
     }
   };
 
-  
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -576,7 +572,7 @@ const AdminDashboard = () => {
                                       onClick={() =>
                                         handleDownload(
                                           file.filename,
-                                          file.version
+                                          file.version,
                                         )
                                       }
                                     >
@@ -600,7 +596,7 @@ const AdminDashboard = () => {
                                       onClick={() =>
                                         handleDeleteAllVersions(
                                           file.filename,
-                                          file.total_versions
+                                          file.total_versions,
                                         )
                                       }
                                     >
