@@ -105,30 +105,25 @@ async def download_file(
 ):
     """Download a specific version of a file"""
     try:
-        # For customers, they can only download their own files
         if current_user.customer_id != customer_id:
             raise HTTPException(status_code=403, detail='Unauthorized')
-        
-        # Get file
+
         file_data = FileModel.get_file(customer_id, machine_id, filename, version)
         if not file_data:
             raise HTTPException(status_code=404, detail='File not found')
-        
-        # Create file-like object
-        file_stream = io.BytesIO(file_data['content'])
-        file_stream.seek(0)
-        
-        # Remove version suffix from filename for download
+
         download_filename = filename
         if f"_v{version}" in download_filename:
             download_filename = download_filename.replace(f"_v{version}", "")
-        
+
         return StreamingResponse(
             io.BytesIO(file_data['content']),
             media_type='application/octet-stream',
             headers={"Content-Disposition": f"attachment; filename={download_filename}"}
         )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -217,10 +212,12 @@ async def delete_file(
         # For customers, they can only delete their own files
         if current_user.customer_id != customer_id:
             raise HTTPException(status_code=403, detail='Unauthorized')
-        
+
         FileModel.delete_file(customer_id, machine_id, filename, version)
         return {'message': 'File deleted successfully'}
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
