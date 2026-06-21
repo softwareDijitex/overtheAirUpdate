@@ -144,7 +144,7 @@ async def admin_login(admin_data: AdminLogin):
     """Admin login"""
     try:
         # For demo purposes - in production, use a proper admin system
-        if admin_data.email == 'admin@example.com' and admin_data.password == 'admin123':
+        if admin_data.email == 'admin@inoweave.com' and admin_data.password == 'inoadmin123':
             token = generate_token('admin', admin_data.email, is_admin=True)
             return LoginResponse(
                 message='Admin login successful',
