@@ -27,6 +27,7 @@ import {
   Person,
 } from "react-bootstrap-icons";
 import MachineManagement from "./MachineManagement";
+import { API_BASE_URL } from "../config";
 
 const AdminDashboard = () => {
   const { user, token } = useAuth();
@@ -74,7 +75,7 @@ const AdminDashboard = () => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8000/api/customers/", {
+      const response = await axios.get(`${API_BASE_URL}/api/customers/`, {
         headers: {
           Authorization: `Bearer ${token}`, // Make sure you have the admin token here
         },
