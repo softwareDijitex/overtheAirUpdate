@@ -216,8 +216,8 @@ POST /api/customers/admin/login
 Content-Type: application/json
 
 {
-  "email": "admin@example.com",
-  "password": "admin123"
+  "email": "",
+  "password": ""
 }
 ```
 
@@ -296,13 +296,11 @@ Authorization: Bearer <admin_token>
 ### Customer Flow
 
 1. **Registration:**
-
    - Navigate to `/register`
    - Fill in all required fields (name, email, phone, address, password)
    - Submit to create account
 
 2. **Login:**
-
    - Navigate to `/login`
    - Enter email and password
    - Access customer dashboard
@@ -316,13 +314,11 @@ Authorization: Bearer <admin_token>
 ### Admin Flow
 
 1. **Admin Login:**
-
    - Navigate to `/admin/login`
    - Use default credentials: `admin@example.com` / `admin123`
    - Access admin dashboard
 
 2. **Customer Management:**
-
    - View all registered customers
    - See customer details and registration dates
    - Access customer files
@@ -334,7 +330,7 @@ Authorization: Bearer <admin_token>
 
 ## Default Credentials
 
-### Admin Account
+### Admin Account sample, not actual values
 
 - **Email:** `admin@example.com`
 - **Password:** `admin123`
@@ -456,8 +452,8 @@ For issues and questions:
 ✅ Running on http://localhost:5001
 ✅ Frontend: Running on http://localhost:3000
 
-Email: admin@example.com
-Password: admin123
+Email:
+Password:
 
 generate deployable flask
 zip -r flask-backend.zip app main.py requirements.txt frontendapp

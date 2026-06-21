@@ -15,8 +15,8 @@ def test_admin_dashboard():
     # Step 1: Admin Login
     print("\n1. Admin Login...")
     admin_login_data = {
-        "email": "admin@example.com",
-        "password": "admin123"
+        "email": "admin@inoweave.com",
+        "password": "inoadmin123"
     }
     
     login_response = requests.post(f"{BASE_URL}/api/customers/admin/login", json=admin_login_data)

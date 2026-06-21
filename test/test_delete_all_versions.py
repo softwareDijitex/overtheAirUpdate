@@ -45,7 +45,7 @@ def _register_and_login(email):
 
 def _admin_token():
     resp = requests.post(f"{BASE_URL}/api/customers/admin/login",
-                         json={"email": "admin@example.com", "password": "admin123"})
+                         json={"email": "admin@inoweave.com", "password": "inoadmin123"})
     return resp.json()["token"]
 
 
