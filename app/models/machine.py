@@ -108,6 +108,27 @@ class Machine:
         except Exception:
             return False
 
+    @staticmethod
+    def find_by_mac_address(mac_address: str) -> Optional["Machine"]:
+        """Find a machine globally by MAC address."""
+        try:
+            if not mac_address or not Machine.is_valid_mac_address(mac_address):
+                return None
+
+            db = get_database()
+            normalized = Machine.normalize_mac_address(mac_address)
+            doc = db.customers.find_one(
+                {"machines.mac_address": normalized},
+                {"machines": {"$elemMatch": {"mac_address": normalized}}},
+                max_time_ms=5000,
+            )
+            if not doc or "machines" not in doc or not doc["machines"]:
+                return None
+            return Machine.from_dict(doc["machines"][0])
+        except Exception as e:
+            print(f"Error find_by_mac_address: {e}")
+            return None
+
     # ---------- CRUD (as subdocuments) ----------
     def save(self) -> Optional[str]:
         """Push into the correct customer's `machines` array."""

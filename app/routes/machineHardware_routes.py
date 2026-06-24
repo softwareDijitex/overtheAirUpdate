@@ -162,12 +162,13 @@ import os
 import re
 import mimetypes
 from datetime import datetime, timezone
-from typing import Tuple, Literal
+from typing import Optional, Tuple, Literal
 
 from fastapi import APIRouter, Request, Form, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
+from app.models.machine import Machine
 
 hardware_bp = APIRouter()
 
@@ -225,54 +226,65 @@ def prefix_for(customer_id: str, machine_id: str, env: str) -> str:
     return f"{customer_id}/{machine_id}/{env}/"
 
 
-@hardware_bp.post("/files/upload")
-async def upload_machine_file(
-    customer_id: str = Form(...),
-    machine_id: str = Form(...),
-    env: Env = Form(...),
-    file: UploadFile = File(...),
-):
-    container = get_container_client()
-    blob_name = make_blob_name(customer_id, machine_id, env, file.filename or "")
-    content_type = file.content_type or guess_media_type(file.filename or "")
-
-    try:
-        # Stream upload directly from the incoming request file-like object
-        container.upload_blob(
-            name=blob_name,
-            data=file.file,
-            overwrite=False,
-            metadata={
-                "customer_id": customer_id,
-                "machine_id": machine_id,
-                "env": env,
-                "orig_filename": file.filename or "",
-            },
-            content_settings=ContentSettings(content_type=content_type),
-        )
-        props = container.get_blob_client(blob_name).get_blob_properties()
-        return {
-            "id": blob_name,  # blob path serves as ID
-            "filename": file.filename or "",
-            "length": int(props.size),
-            "content_type": props.content_settings.content_type or "application/octet-stream",
-            "uploadDate": props.last_modified.isoformat(),
-            "metadata": props.metadata,
-            "message": "File uploaded successfully",
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+# Deprecated: hardware uploads are handled through the customer/admin file APIs.
+# @hardware_bp.post("/files/upload")
+# async def upload_machine_file(
+#     customer_id: str = Form(...),
+#     machine_id: str = Form(...),
+#     env: Env = Form(...),
+#     file: UploadFile = File(...),
+# ):
+#     container = get_container_client()
+#     blob_name = make_blob_name(customer_id, machine_id, env, file.filename or "")
+#     content_type = file.content_type or guess_media_type(file.filename or "")
+#
+#     try:
+#         # Stream upload directly from the incoming request file-like object
+#         container.upload_blob(
+#             name=blob_name,
+#             data=file.file,
+#             overwrite=False,
+#             metadata={
+#                 "customer_id": customer_id,
+#                 "machine_id": machine_id,
+#                 "env": env,
+#                 "orig_filename": file.filename or "",
+#             },
+#             content_settings=ContentSettings(content_type=content_type),
+#         )
+#         props = container.get_blob_client(blob_name).get_blob_properties()
+#         return {
+#             "id": blob_name,  # blob path serves as ID
+#             "filename": file.filename or "",
+#             "length": int(props.size),
+#             "content_type": props.content_settings.content_type or "application/octet-stream",
+#             "uploadDate": props.last_modified.isoformat(),
+#             "metadata": props.metadata,
+#             "message": "File uploaded successfully",
+#         }
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
 
 
 @hardware_bp.post("/files/latest")
 async def download_latest_file(
     request: Request,
-    customer_id: str = Form(...),
-    machine_id: str = Form(...),
-    env: Env = Form(...),
+    mac_address: str = Form(...),
+    env: Optional[Env] = Form(None),
 ):
+    if not Machine.is_valid_mac_address(mac_address):
+        raise HTTPException(status_code=400, detail="Invalid MAC address format")
+
+    machine = Machine.find_by_mac_address(mac_address)
+    if not machine:
+        raise HTTPException(status_code=404, detail="Machine not found for MAC address")
+
     container = get_container_client()
-    prefix = prefix_for(customer_id, machine_id, env)
+    prefix = (
+        prefix_for(machine.customer_id, machine.id, env)
+        if env
+        else f"{machine.customer_id}/{machine.id}/"
+    )
 
     # Find most recent by last_modified
     try:
@@ -281,7 +293,14 @@ async def download_latest_file(
             if latest is None or b.last_modified > latest.last_modified:
                 latest = b
         if latest is None:
-            raise HTTPException(status_code=404, detail="No file found for this machine/env")
+            detail = (
+                "No file found for this MAC address/env"
+                if env
+                else "No file found for this MAC address"
+            )
+            raise HTTPException(status_code=404, detail=detail)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list blobs: {e}")
 
