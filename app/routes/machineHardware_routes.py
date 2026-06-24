@@ -161,8 +161,9 @@
 import os
 import re
 import mimetypes
+import uuid
 from datetime import datetime, timezone
-from typing import Optional, Tuple, Literal
+from typing import List, Optional, Tuple, Literal
 
 from fastapi import APIRouter, Request, Form, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
@@ -174,6 +175,7 @@ hardware_bp = APIRouter()
 
 Env = Literal["dev", "production"]
 _RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)$", re.IGNORECASE)
+_RANGE_VALUE_RE = re.compile(r"(\d*)-(\d*)$")
 
 
 def guess_media_type(name: str) -> str:
@@ -199,6 +201,41 @@ def parse_range_header(range_value: str, file_size: int) -> Tuple[int, int]:
     if start > end or start >= file_size:
         raise HTTPException(status_code=416, detail="Requested range not satisfiable")
     return start, min(end, file_size - 1)
+
+
+def parse_range_part(range_part: str, file_size: int) -> Tuple[int, int]:
+    m = _RANGE_VALUE_RE.match(range_part.strip())
+    if not m:
+        raise HTTPException(status_code=400, detail="Invalid Range header")
+    start_s, end_s = m.groups()
+    if start_s and end_s:
+        start, end = int(start_s), int(end_s)
+    elif start_s:
+        start, end = int(start_s), file_size - 1
+    elif end_s:
+        n = int(end_s)
+        if n <= 0:
+            raise HTTPException(status_code=400, detail="Invalid Range header")
+        start, end = max(file_size - n, 0), file_size - 1
+    else:
+        raise HTTPException(status_code=400, detail="Invalid Range header")
+    if start > end or start >= file_size:
+        raise HTTPException(status_code=416, detail="Requested range not satisfiable")
+    return start, min(end, file_size - 1)
+
+
+def parse_range_header_parts(range_header: str, file_size: int) -> List[Tuple[int, int]]:
+    if not range_header.lower().startswith("bytes="):
+        raise HTTPException(status_code=400, detail="Invalid Range header")
+
+    ranges = [
+        parse_range_part(part, file_size)
+        for part in range_header.split("=", 1)[1].split(",")
+        if part.strip()
+    ]
+    if not ranges:
+        raise HTTPException(status_code=400, detail="Invalid Range header")
+    return ranges
 
 
 def get_container_client():
@@ -332,11 +369,39 @@ async def download_latest_file(
 
         return StreamingResponse(stream(), media_type=media_type, headers=headers)
 
-    # Partial download (HTTP Range)
-    if not range_header.lower().startswith("bytes="):
-        raise HTTPException(status_code=400, detail="Invalid Range header")
-    # start, end = parse_range_header(range_header.split("=", 1)[1], total)
-    start, end = parse_range_header(range_header, total)
+    ranges = parse_range_header_parts(range_header, total)
+    if len(ranges) > 1:
+        boundary = f"hardware-download-{uuid.uuid4().hex}"
+        headers = {
+            "Accept-Ranges": "bytes",
+            "ETag": props.etag,
+            "Last-Modified": props.last_modified.strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        }
+
+        def stream_multipart_ranges():
+            for start, end in ranges:
+                length = end - start + 1
+                part_header = (
+                    f"--{boundary}\r\n"
+                    f"Content-Type: {media_type}\r\n"
+                    f"Content-Range: bytes {start}-{end}/{total}\r\n"
+                    "\r\n"
+                )
+                yield part_header.encode("ascii")
+                downloader = bc.download_blob(offset=start, length=length)
+                for chunk in downloader.chunks():
+                    yield chunk
+                yield b"\r\n"
+            yield f"--{boundary}--\r\n".encode("ascii")
+
+        return StreamingResponse(
+            stream_multipart_ranges(),
+            status_code=206,
+            media_type=f"multipart/byteranges; boundary={boundary}",
+            headers=headers,
+        )
+
+    start, end = ranges[0]
 
     length = end - start + 1
 
