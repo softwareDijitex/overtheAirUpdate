@@ -46,6 +46,8 @@ const AdminDashboard = () => {
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [selectedFileVersions, setSelectedFileVersions] = useState([]);
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [showDeleteCustomerModal, setShowDeleteCustomerModal] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState(null);
 
   // File upload state for admin
   const [selectedCustomerForUpload, setSelectedCustomerForUpload] =
@@ -118,6 +120,32 @@ const AdminDashboard = () => {
     setFiles([]);
     // Automatically switch to machines tab
     setActiveTab("machines");
+  };
+
+  const confirmDeleteCustomer = (customer) => {
+    setCustomerToDelete(customer);
+    setShowDeleteCustomerModal(true);
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+    try {
+      await axios.delete(`/api/customers/${customerToDelete.customer_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setShowDeleteCustomerModal(false);
+      setCustomerToDelete(null);
+      if (selectedCustomer?.customer_id === customerToDelete.customer_id) {
+        setSelectedCustomer(null);
+        setMachines([]);
+        setFiles([]);
+        setActiveTab("customers");
+      }
+      fetchCustomers();
+      setSuccess("Customer deleted successfully");
+    } catch (err) {
+      setError("Failed to delete customer");
+    }
   };
 
   const handleMachineSelect = (machine) => {
@@ -423,6 +451,16 @@ const AdminDashboard = () => {
                                   <HddNetwork className="me-1" />
                                   View Machines
                                 </Button>
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  className="ms-2"
+                                  onClick={() => confirmDeleteCustomer(customer)}
+                                  title="Delete Customer"
+                                >
+                                  <Trash className="me-1" />
+                                  Delete
+                                </Button>
                               </td>
                             </tr>
                           ))}
@@ -674,6 +712,34 @@ const AdminDashboard = () => {
             </tbody>
           </Table>
         </Modal.Body>
+      </Modal>
+
+      <Modal
+        show={showDeleteCustomerModal}
+        onHide={() => setShowDeleteCustomerModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Delete Customer</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {customerToDelete && (
+            <p>
+              Are you sure you want to delete{" "}
+              <strong>{customerToDelete.name}</strong>? Customer has{" "}
+              <strong>{customerToDelete.machine_count ?? 0} machine{(customerToDelete.machine_count ?? 0) !== 1 ? "s" : ""}</strong>.
+              This action cannot be undone.
+            </p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteCustomerModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleDeleteCustomer}>
+            Delete Customer
+          </Button>
+        </Modal.Footer>
       </Modal>
     </Container>
   );

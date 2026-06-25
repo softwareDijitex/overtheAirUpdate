@@ -37,6 +37,7 @@ class CustomerResponse(BaseModel):
     address: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    machine_count: int = 0
 
 class LoginResponse(BaseModel):
     message: str
@@ -207,13 +208,46 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
 async def get_all_customers(admin_user: dict = Depends(get_admin_user)):
     """Get all customers (admin only)"""
     try:
-        customers = Customer.get_all_customers()
-        return [CustomerResponse(**customer.to_dict()) for customer in customers]
-        
+        db = get_database()
+        if db is None:
+            raise Exception("MongoDB connection not available")
+        cursor = db.customers.find({}, {'password': 0}, max_time_ms=10000)
+        results = []
+        for c in cursor:
+            results.append(CustomerResponse(
+                customer_id=c['customer_id'],
+                name=c['name'],
+                email=c['email'],
+                phone=c['phone'],
+                address=c['address'],
+                created_at=c.get('created_at'),
+                updated_at=c.get('updated_at'),
+                machine_count=len(c.get('machines', [])),
+            ))
+        return results
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"Get all customers error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@customer_bp.delete('/{customer_id}')
+async def delete_customer(customer_id: str, admin_user: dict = Depends(get_admin_user)):
+    """Delete a customer and all their machines (admin only)"""
+    try:
+        db = get_database()
+        if db is None:
+            raise Exception("MongoDB connection not available")
+        result = db.customers.delete_one({'customer_id': customer_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail='Customer not found')
+        return {'message': 'Customer deleted successfully'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Delete customer error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
