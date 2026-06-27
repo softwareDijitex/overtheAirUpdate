@@ -65,12 +65,13 @@ import {
   Routes,
   Navigate,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext"; // CHANGED (no need to import useAuth here)
+import { AuthProvider } from "./contexts/AuthContext";
 import AdminDashboard from "./components/AdminDashboard";
 import AdminLogin from "./components/AdminLogin";
 import CustomerDashboard from "./components/CustomerDashboard";
 import CustomerLogin from "./components/Login";
 import Register from "./components/Register";
+import TestReport from "./components/TestReport";
 import { PrivateRoute, AdminRoute } from "./Guards"; // NEW
 
 // REMOVED: inline guards (we now use the shared ones in routes/Guards.jsx)
@@ -89,11 +90,11 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} /> {/* CHANGED: add replace */}
+            <Route path="/" element={<Navigate to="/login" replace />} />{" "}
+            {/* CHANGED: add replace */}
             <Route path="/login" element={<CustomerLogin />} />
             <Route path="/register" element={<Register />} />
             <Route path="/admin/login" element={<AdminLogin />} />
-
             <Route
               path="/dashboard"
               element={
@@ -102,7 +103,6 @@ function App() {
                 </PrivateRoute>
               }
             />
-
             <Route
               path="/admin/dashboard"
               element={
@@ -111,9 +111,8 @@ function App() {
                 </AdminRoute>
               }
             />
-
-            {/* NEW: optional catch-all to keep routing tidy */}
-            <Route path="*" element={<Navigate to="/login" replace />} /> {/* NEW */}
+            <Route path="/test-report" element={<TestReport />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
       </Router>
