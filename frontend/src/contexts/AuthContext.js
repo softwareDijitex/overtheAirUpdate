@@ -476,12 +476,14 @@ export function AuthProvider({ children }) {
 
   // ---- Initial restore (adopt whichever role/token is in localStorage)
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (stored) {
-      // Adopt and hydrate; this tab will reflect the current global session
-      saveSession(stored);
+    try {
+      const stored = localStorage.getItem(TOKEN_KEY);
+      if (stored) {
+        saveSession(stored);
+      }
+    } finally {
+      setIsRestoring(false);
     }
-    setIsRestoring(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
