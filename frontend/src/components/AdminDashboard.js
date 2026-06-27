@@ -113,11 +113,11 @@ const AdminDashboard = () => {
 
   const handleCustomerSelect = async (customer) => {
     setSelectedCustomer(customer);
-    await fetchCustomerMachines(customer.customer_id);
     setSelectedMachine(null);
     setFiles([]);
     // Automatically switch to machines tab
     setActiveTab("machines");
+    await fetchCustomerMachines(customer.customer_id);
   };
 
   const handleMachineSelect = (machine) => {
