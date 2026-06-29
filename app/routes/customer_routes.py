@@ -37,6 +37,7 @@ class CustomerResponse(BaseModel):
     address: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    machine_count: int = 0
 
 class LoginResponse(BaseModel):
     message: str
@@ -207,13 +208,68 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
 async def get_all_customers(admin_user: dict = Depends(get_admin_user)):
     """Get all customers (admin only)"""
     try:
-        customers = Customer.get_all_customers()
-        return [CustomerResponse(**customer.to_dict()) for customer in customers]
-        
+        db = get_database()
+        if db is None:
+            raise Exception("MongoDB connection not available")
+        cursor = db.customers.find({}, {'password': 0}, max_time_ms=10000)
+        results = []
+        for c in cursor:
+            results.append(CustomerResponse(
+                customer_id=c['customer_id'],
+                name=c['name'],
+                email=c['email'],
+                phone=c['phone'],
+                address=c['address'],
+                created_at=c.get('created_at'),
+                updated_at=c.get('updated_at'),
+                machine_count=len(c.get('machines', [])),
+            ))
+        return results
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"Get all customers error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@customer_bp.delete('/{customer_id}')
+async def delete_customer(customer_id: str, admin_user: dict = Depends(get_admin_user)):
+    """Delete a customer and all their machines (admin only)"""
+    try:
+        db = get_database()
+        if db is None:
+            raise Exception("MongoDB connection not available")
+
+        customer = db.customers.find_one({'customer_id': customer_id})
+        if not customer:
+            raise HTTPException(status_code=404, detail='Customer not found')
+
+        # Delete all Azure blob files for every machine belonging to this customer
+        from azure.storage.blob import BlobServiceClient
+        from app.config import Config
+        for machine in customer.get('machines', []):
+            for file_data in machine.get('files', []):
+                if file_data.get('storage_type') == 'azure' and 'blob_name' in file_data:
+                    try:
+                        if Config.AZURE_STORAGE_CONNECTION_STRING and Config.AZURE_STORAGE_CONTAINER_NAME:
+                            blob_service_client = BlobServiceClient.from_connection_string(
+                                Config.AZURE_STORAGE_CONNECTION_STRING
+                            )
+                            container_client = blob_service_client.get_container_client(
+                                Config.AZURE_STORAGE_CONTAINER_NAME
+                            )
+                            blob_client = container_client.get_blob_client(file_data['blob_name'])
+                            blob_client.delete_blob()
+                    except Exception as azure_error:
+                        print(f"Warning: Failed to delete blob {file_data['blob_name']}: {azure_error}")
+
+        db.customers.delete_one({'customer_id': customer_id})
+        return {'message': 'Customer deleted successfully'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Delete customer error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
