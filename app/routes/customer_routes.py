@@ -240,9 +240,31 @@ async def delete_customer(customer_id: str, admin_user: dict = Depends(get_admin
         db = get_database()
         if db is None:
             raise Exception("MongoDB connection not available")
-        result = db.customers.delete_one({'customer_id': customer_id})
-        if result.deleted_count == 0:
+
+        customer = db.customers.find_one({'customer_id': customer_id})
+        if not customer:
             raise HTTPException(status_code=404, detail='Customer not found')
+
+        # Delete all Azure blob files for every machine belonging to this customer
+        from azure.storage.blob import BlobServiceClient
+        from app.config import Config
+        for machine in customer.get('machines', []):
+            for file_data in machine.get('files', []):
+                if file_data.get('storage_type') == 'azure' and 'blob_name' in file_data:
+                    try:
+                        if Config.AZURE_STORAGE_CONNECTION_STRING and Config.AZURE_STORAGE_CONTAINER_NAME:
+                            blob_service_client = BlobServiceClient.from_connection_string(
+                                Config.AZURE_STORAGE_CONNECTION_STRING
+                            )
+                            container_client = blob_service_client.get_container_client(
+                                Config.AZURE_STORAGE_CONTAINER_NAME
+                            )
+                            blob_client = container_client.get_blob_client(file_data['blob_name'])
+                            blob_client.delete_blob()
+                    except Exception as azure_error:
+                        print(f"Warning: Failed to delete blob {file_data['blob_name']}: {azure_error}")
+
+        db.customers.delete_one({'customer_id': customer_id})
         return {'message': 'Customer deleted successfully'}
     except HTTPException:
         raise

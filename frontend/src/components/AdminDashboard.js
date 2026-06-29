@@ -458,8 +458,7 @@ const AdminDashboard = () => {
                                   onClick={() => confirmDeleteCustomer(customer)}
                                   title="Delete Customer"
                                 >
-                                  <Trash className="me-1" />
-                                  Delete
+                                  <Trash />
                                 </Button>
                               </td>
                             </tr>
