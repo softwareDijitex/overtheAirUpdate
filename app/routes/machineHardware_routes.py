@@ -1,175 +1,17 @@
-# # app/routes/machineHardware_routes.py
-# import os
-# import re
-# import mimetypes
-# from typing import Tuple, Literal
-
-# from fastapi import APIRouter, Request, Form, File, UploadFile, HTTPException
-# from fastapi.responses import StreamingResponse
-# import gridfs
-
-# from app import get_database
-# from app.models.machine import Machine   # to validate machine existence
-
-# # Create the APIRouter (FastAPI equivalent of Flask Blueprint)
-# hardware_bp = APIRouter()
-
-# Env = Literal["dev", "production"]
-
-# # ---------- helpers ----------
-# _RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)$", re.IGNORECASE)
-
-# def parse_range_header(range_value: str, file_size: int) -> Tuple[int, int]:
-#     m = _RANGE_RE.match(range_value.strip())
-#     if not m:
-#         raise HTTPException(status_code=400, detail="Invalid Range header")
-#     start_s, end_s = m.groups()
-#     if start_s and end_s:
-#         start, end = int(start_s), int(end_s)
-#     elif start_s:                            # bytes=START-
-#         start, end = int(start_s), file_size - 1
-#     elif end_s:                              # bytes=-SUFFIX
-#         n = int(end_s)
-#         if n <= 0:
-#             raise HTTPException(status_code=400, detail="Invalid Range header")
-#         start, end = max(file_size - n, 0), file_size - 1
-#     else:
-#         raise HTTPException(status_code=400, detail="Invalid Range header")
-#     if start > end or start >= file_size:
-#         raise HTTPException(status_code=416, detail="Requested range not satisfiable")
-#     return start, min(end, file_size - 1)
-
-# def guess_media_type(name: str) -> str:
-#     return mimetypes.guess_type(name)[0] or "application/octet-stream"
-
-# def gridfs_bucket():
-#     db = get_database()
-#     return gridfs.GridFS(db, collection="machine_files"), db["machine_files.files"]
-
-# # ---------- 1) UPLOAD: add new file to a machine ----------
-# @hardware_bp.post("/files/upload")
-# async def upload_machine_file(
-#     customer_id: str = Form(...),
-#     machine_id: str = Form(...),
-#     env: Env = Form(...),                      # dev or production
-#     file: UploadFile = File(...),              # the binary
-# ):
-#     # Ensure the machine exists under that customer
-#     # m = Machine.find_by_machine_id_for_customer(customer_id, machine_id)
-#     # if not m:
-#     #     raise HTTPException(status_code=404, detail="Machine not found for customer")
-
-#     fs, files_coll = gridfs_bucket()
-
-#     # Store in GridFS with metadata so we can query the "latest" later
-#     try:
-#         _id = fs.put(
-#             file.file,
-#             filename=file.filename or f"{machine_id}-{env}.bin",
-#             content_type=file.content_type or guess_media_type(file.filename or ""),
-#             metadata={
-#                 "customer_id": customer_id,
-#                 "machine_id": machine_id,
-#                 "env": env,
-#             },
-#         )
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
-
-#     # Fetch the files doc for response
-#     doc = files_coll.find_one({"_id": _id})
-#     return {
-#         "id": str(_id),
-#         "filename": doc.get("filename"),
-#         "length": int(doc.get("length", 0)),
-#         "content_type": doc.get("contentType"),
-#         "uploadDate": doc.get("uploadDate"),
-#         "metadata": doc.get("metadata", {}),
-#         "message": "File uploaded successfully",
-#     }
-
-# # ---------- 2) DOWNLOAD: fetch latest file for (cid, mid, env) ----------
-# @hardware_bp.post("/files/latest")
-# async def download_latest_file(
-#     request: Request,
-#     customer_id: str = Form(...),
-#     machine_id: str = Form(...),
-#     env: Env = Form(...),
-# ):
-#     fs, files_coll = gridfs_bucket()
-
-#     # newest by uploadDate
-#     latest = files_coll.find_one(
-#         {
-#             "metadata.customer_id": customer_id,
-#             "metadata.machine_id": machine_id,
-#             "metadata.env": env,
-#         },
-#         sort=[("uploadDate", -1)],
-#     )
-#     if not latest:
-#         raise HTTPException(status_code=404, detail="No file found for this machine/env")
-
-#     try:
-#         grid_out = fs.get(latest["_id"])  # file-like: read(), seek()
-#     except Exception:
-#         raise HTTPException(status_code=500, detail="Failed to open file stream")
-
-#     total = int(latest["length"])
-#     filename = latest.get("filename") or f"{machine_id}-{env}-latest.bin"
-#     media_type = latest.get("contentType") or guess_media_type(filename)
-
-#     range_header = request.headers.get("range") or request.headers.get("Range")
-#     if not range_header:
-#         # stream full file
-#         def stream_full(chunk=1024 * 1024):
-#             while True:
-#                 data = grid_out.read(chunk)
-#                 if not data:
-#                     break
-#                 yield data
-#         headers = {
-#             "Accept-Ranges": "bytes",
-#             "Content-Disposition": f'attachment; filename="{filename}"',
-#             "Content-Length": str(total),
-#         }
-#         return StreamingResponse(stream_full(), media_type=media_type, headers=headers)
-
-#     # partial (resume) download
-#     if not range_header.lower().startswith("bytes="):
-#         raise HTTPException(status_code=400, detail="Invalid Range header")
-#     start, end = parse_range_header(range_header.split("=", 1)[1], total)
-#     length = end - start + 1
-
-#     def stream_range(start_pos: int, length: int, chunk=1024 * 1024):
-#         grid_out.seek(start_pos)
-#         remaining = length
-#         while remaining > 0:
-#             data = grid_out.read(min(chunk, remaining))
-#             if not data:
-#                 break
-#             remaining -= len(data)
-#             yield data
-
-#     headers = {
-#         "Content-Range": f"bytes {start}-{end}/{total}",
-#         "Accept-Ranges": "bytes",
-#         "Content-Length": str(length),
-#         "Content-Disposition": f'attachment; filename="{filename}"',
-#     }
-#     return StreamingResponse(stream_range(start, length), status_code=206, media_type=media_type, headers=headers)
 import os
 import re
 import mimetypes
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple, Literal
+from azure.core.exceptions import ResourceNotFoundError
 
 from fastapi import APIRouter, Request, Form, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
 from app.models.machine import Machine
+from app.models.customer import Customer
 
 hardware_bp = APIRouter()
 
@@ -262,93 +104,66 @@ def make_blob_name(customer_id: str, machine_id: str, env: str, filename: str) -
 def prefix_for(customer_id: str, machine_id: str, env: str) -> str:
     return f"{customer_id}/{machine_id}/{env}/"
 
-
-# Deprecated: hardware uploads are handled through the customer/admin file APIs.
-# @hardware_bp.post("/files/upload")
-# async def upload_machine_file(
-#     customer_id: str = Form(...),
-#     machine_id: str = Form(...),
-#     env: Env = Form(...),
-#     file: UploadFile = File(...),
-# ):
-#     container = get_container_client()
-#     blob_name = make_blob_name(customer_id, machine_id, env, file.filename or "")
-#     content_type = file.content_type or guess_media_type(file.filename or "")
-#
-#     try:
-#         # Stream upload directly from the incoming request file-like object
-#         container.upload_blob(
-#             name=blob_name,
-#             data=file.file,
-#             overwrite=False,
-#             metadata={
-#                 "customer_id": customer_id,
-#                 "machine_id": machine_id,
-#                 "env": env,
-#                 "orig_filename": file.filename or "",
-#             },
-#             content_settings=ContentSettings(content_type=content_type),
-#         )
-#         props = container.get_blob_client(blob_name).get_blob_properties()
-#         return {
-#             "id": blob_name,  # blob path serves as ID
-#             "filename": file.filename or "",
-#             "length": int(props.size),
-#             "content_type": props.content_settings.content_type or "application/octet-stream",
-#             "uploadDate": props.last_modified.isoformat(),
-#             "metadata": props.metadata,
-#             "message": "File uploaded successfully",
-#         }
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
-
-
 @hardware_bp.post("/files/latest")
 async def download_latest_file(
     request: Request,
     mac_address: str = Form(...),
-    env: Optional[Env] = Form(None),
 ):
     if not Machine.is_valid_mac_address(mac_address):
-        raise HTTPException(status_code=400, detail="Invalid MAC address format")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid MAC address format"
+        )
 
-    machine = Machine.find_by_mac_address(mac_address)
-    if not machine:
-        raise HTTPException(status_code=404, detail="Machine not found for MAC address")
+    customer = Customer.find_by_mac_address(mac_address)
 
-    container = get_container_client()
-    prefix = (
-        prefix_for(machine.customer_id, machine.id, env)
-        if env
-        else f"{machine.customer_id}/{machine.id}/"
+    if not customer or not customer.get("machines"):
+        raise HTTPException(
+            status_code=404,
+            detail="Machine not found for MAC address"
+        )
+
+    machine = customer["machines"][0]
+
+    files = machine.get("files", [])
+
+    if not files:
+        raise HTTPException(
+            status_code=404,
+            detail="No file found for this MAC address"
+        )
+
+    latest = max(
+        files,
+        key=lambda f: f.get("uploaded_at") or datetime.min
     )
 
-    # Find most recent by last_modified
-    try:
-        latest = None
-        for b in container.list_blobs(name_starts_with=prefix):
-            if latest is None or b.last_modified > latest.last_modified:
-                latest = b
-        if latest is None:
-            detail = (
-                "No file found for this MAC address/env"
-                if env
-                else "No file found for this MAC address"
-            )
-            raise HTTPException(status_code=404, detail=detail)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list blobs: {e}")
+    blob_name = latest.get("blob_name")
 
-    bc = container.get_blob_client(latest.name)
+    if not blob_name:
+        raise HTTPException(
+            status_code=500,
+            detail="Blob name missing from metadata"
+        )
+
+    container = get_container_client()
+
+    bc = container.get_blob_client(blob_name)
     try:
         props = bc.get_blob_properties()
+    except ResourceNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="Firmware file not found in storage"
+        )
     except Exception:
-        raise HTTPException(status_code=500, detail="Failed to fetch blob properties")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch blob properties"
+        )
 
     total = int(props.size)
-    filename = (props.metadata or {}).get("orig_filename") or latest.name.rsplit("/", 1)[-1]
+    filename = latest.get("filename") or blob_name.rsplit("/", 1)[-1]
     media_type = props.content_settings.content_type or guess_media_type(filename)
 
     range_header = request.headers.get("range") or request.headers.get("Range")
