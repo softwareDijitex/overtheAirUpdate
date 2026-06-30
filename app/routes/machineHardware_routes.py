@@ -12,6 +12,7 @@ from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
 from app.models.machine import Machine
 from app.models.customer import Customer
+from app.models.file import FileModel
 
 hardware_bp = APIRouter()
 
@@ -125,20 +126,18 @@ async def download_latest_file(
 
     machine = customer["machines"][0]
 
-    files = machine.get("files", [])
-
-    if not files:
-        raise HTTPException(
-            status_code=404,
-            detail="No file found for this MAC address"
-        )
-
-    latest = max(
-        files,
-        key=lambda f: f.get("uploaded_at") or datetime.min
+    latest = FileModel.get_latest_file_metadata(
+            customer["customer_id"],
+            machine["id"]
     )
 
-    blob_name = latest.get("blob_name")
+    if not latest:
+            raise HTTPException(
+                status_code=404,
+                detail="No file found for this MAC address"
+            )
+
+    blob_name = latest["blob_name"]
 
     if not blob_name:
         raise HTTPException(

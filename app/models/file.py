@@ -302,7 +302,13 @@ class File:
             raise Exception(f"Failed to save file: {str(e)}")
 
     @staticmethod
-    def get_file(customer_id, machine_id, filename, version):
+    def get_file(
+        customer_id,
+        machine_id,
+        filename=None,
+        version=None,
+        latest=False,
+    ):
         """Get file from Azure Blob Storage or machine document"""
         try:
             db = get_database()
@@ -324,11 +330,26 @@ class File:
             
             # Find the specific file
             file_data = None
-            for f in machine['files']:
-                if f['filename'] == filename and f['version'] == version:
-                    file_data = f
-                    break
-            
+            files = machine.get("files", [])
+
+            if not files:
+             return None
+
+            if latest:
+                file_data = max(
+                    files,
+                    key=lambda f: f.get("uploaded_at") or datetime.min
+                )
+            else:
+                file_data = next(
+                    (
+                        f for f in files
+                        if f["filename"] == filename
+                        and f["version"] == version
+                    ),
+                    None,
+                )
+
             if not file_data:
                 return None
             
