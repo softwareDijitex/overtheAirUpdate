@@ -629,3 +629,42 @@ class File:
 
         except Exception as e:
             raise Exception(f"Failed to delete all versions: {str(e)}")
+    
+    @staticmethod
+    def get_latest_file_metadata(customer_id, machine_id):  
+        """Get metadata for the latest uploaded file for a machine."""
+        try:
+            db = get_database()
+            if db is None:
+                raise Exception("MongoDB connection not available")
+
+            customer = db.customers.find_one(
+                {"customer_id": customer_id},
+                {"machines": 1},
+                max_time_ms=5000,
+            )
+
+            if not customer or "machines" not in customer:
+                return None
+
+            machine = next(
+                (m for m in customer["machines"] if m["id"] == machine_id),
+                None,
+            )
+
+            if not machine:
+                return None
+
+            files = machine.get("files", [])
+            if not files:
+                return None
+
+            latest = max(
+                files,
+                key=lambda f: f.get("uploaded_at") or datetime.min
+            )
+
+            return latest
+
+        except Exception as e:
+            raise Exception(f"Failed to get latest file metadata: {e}")
