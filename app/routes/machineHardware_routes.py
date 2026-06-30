@@ -150,18 +150,32 @@ async def download_latest_file(
 
     bc = container.get_blob_client(blob_name)
     try:
+        print("Container:", container.container_name)
+        print("Blob:", blob_name)
+        print("Exists:", bc.exists())
+
         props = bc.get_blob_properties()
-    except ResourceNotFoundError as e:
-        print(f"Blob not found: {blob_name}")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Blob not found: {blob_name}"
-        )
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to fetch blob properties"
-        )
+        print("Properties fetched successfully")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        print("Exception type:", type(e))
+        print("Exception:", repr(e))
+
+        raise
+    # except ResourceNotFoundError as e:
+    #     print(f"Blob not found: {blob_name}")
+    #     raise HTTPException(
+    #         status_code=404,
+    #         detail=f"Blob not found: {blob_name}"
+    #     )
+    # except Exception:
+    #     raise HTTPException(
+    #         status_code=500,
+    #         detail="Failed to fetch blob properties"
+    #     )
 
     total = int(props.size)
     filename = latest.get("filename") or blob_name.rsplit("/", 1)[-1]
