@@ -13,6 +13,8 @@ from azure.core.exceptions import ResourceExistsError
 from app.models.machine import Machine
 from app.models.customer import Customer
 from app.models.file import File
+from app.config import Config
+
 
 hardware_bp = APIRouter()
 
@@ -85,7 +87,7 @@ def get_container_client():
     conn = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     if not conn:
         raise HTTPException(500, "AZURE_STORAGE_CONNECTION_STRING not set")
-    container_name = os.getenv("BLOB_CONTAINER_NAME", "machine-files")
+    container_name = Config.BLOB_CONTAINER_NAME
     svc = BlobServiceClient.from_connection_string(conn)
     container = svc.get_container_client(container_name)
     try:

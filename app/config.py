@@ -16,6 +16,7 @@ class Config:
     DB_NAME = os.environ.get('DB_NAME') or 'overtheairupdate'
     AZURE_STORAGE_CONNECTION_STRING = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
     AZURE_STORAGE_CONTAINER_NAME = os.environ.get('AZURE_STORAGE_CONTAINER_NAME')
+    BLOB_CONTAINER_NAME = os.environ.get('BLOB_CONTAINER_NAME')
     MAX_FILE_SIZE = (int(os.environ.get('MAX_FILE_SIZE_MB', 7))) * 1024 * 1024
     MAX_UPLOAD_BYTES = 7 * 1024 * 1024;
     MAX_UPLOAD_MB = 7
