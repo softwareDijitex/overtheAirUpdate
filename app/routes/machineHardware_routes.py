@@ -12,7 +12,7 @@ from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
 from app.models.machine import Machine
 from app.models.customer import Customer
-from app.models.file import FileModel
+from app.models.file import File
 
 hardware_bp = APIRouter()
 
@@ -126,7 +126,7 @@ async def download_latest_file(
 
     machine = customer["machines"][0]
 
-    latest = FileModel.get_latest_file_metadata(
+    latest = File.get_latest_file_metadata(
             customer["customer_id"],
             machine["id"]
     )
