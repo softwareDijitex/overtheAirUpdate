@@ -178,3 +178,46 @@ class Customer:
         except Exception as e:
             print(f"Error getting all customers: {e}")
             raise
+
+    @staticmethod
+    def find_by_mac_address(mac_address):
+        """Find the customer that owns the specified machine MAC address."""
+        try:
+            from app.models.machine import Machine
+
+            if not mac_address or not Machine.is_valid_mac_address(mac_address):
+                return None
+
+            db = get_database()
+            if db is None:
+                raise Exception("MongoDB connection not available")
+
+            normalized = Machine.normalize_mac_address(mac_address)
+
+            customer_data = db.customers.find_one(
+                {"machines.mac_address": normalized},
+                {
+                    "customer_id": 1,
+                    "machines": {
+                    "$elemMatch": {
+                        "mac_address": normalized
+                       }
+                    }
+                },
+                 max_time_ms=5000
+            )
+
+            if customer_data:
+                return customer_data
+
+            return None
+
+        except ServerSelectionTimeoutError as e:
+            print(f"MongoDB timeout error: {e}")
+            raise Exception("Database connection timeout")
+        except PyMongoError as e:
+            print(f"MongoDB error: {e}")
+            raise Exception(f"Database error: {str(e)}")
+        except Exception as e:
+            print(f"Error finding customer by MAC address: {e}")
+            raise
