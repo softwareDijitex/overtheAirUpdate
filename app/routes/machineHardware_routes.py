@@ -132,6 +132,7 @@ async def download_latest_file(
     )
 
     if not latest:
+            print("No latest file metadata found")
             raise HTTPException(
                 status_code=404,
                 detail="No file found for this MAC address"
@@ -150,10 +151,11 @@ async def download_latest_file(
     bc = container.get_blob_client(blob_name)
     try:
         props = bc.get_blob_properties()
-    except ResourceNotFoundError:
+    except ResourceNotFoundError as e:
+        print(f"Blob not found: {blob_name}")
         raise HTTPException(
             status_code=404,
-            detail="Firmware file not found in storage"
+            detail=f"Blob not found: {blob_name}"
         )
     except Exception:
         raise HTTPException(
